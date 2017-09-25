@@ -1,0 +1,324 @@
+package org.czy.util;
+
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import org.apache.log4j.Logger;
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+public class ReaderExcel {
+	private final static Logger LOG = Logger.getLogger(ReaderExcel.class);
+	
+	private static List<List<List<String>>> readXls(String path){
+		List<List<List<String>>> result = new ArrayList<List<List<String>>>();
+		try {
+			InputStream is = new FileInputStream(path);
+			HSSFWorkbook workBook = new HSSFWorkbook(is);
+			//遍历Excel中sheet数
+			for (int sheetIndex = 0; sheetIndex < workBook.getNumberOfSheets(); sheetIndex++) {
+				HSSFSheet sheet = workBook.getSheetAt(sheetIndex);
+				if(null==sheet){
+					continue;
+				}
+				List<List<String>> tableList = new ArrayList<List<String>>();
+				//遍历sheet中所有行
+				for (int rowIndex = 0; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+					HSSFRow row = sheet.getRow(rowIndex);
+					int colMinIndex = row.getFirstCellNum();
+					int colMaxIndex = row.getLastCellNum();
+					List<String> rowList = new ArrayList<String>();
+					//遍历行中所有列
+					for (int colIndex = colMinIndex; colIndex < colMaxIndex; colIndex++) {
+						HSSFCell col = row.getCell(colIndex);
+						if(null==col||col.equals("")){
+							continue;
+						}
+						rowList.add(getStringVal(col));
+					}
+					tableList.add(rowList);
+				}
+				result.add(tableList);
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			LOG.error(e);
+			return null;
+		}
+		return result;
+	}
+	
+	
+	private static List<List<List<String>>> readXlsx(String path){
+		List<List<List<String>>> result = new ArrayList<List<List<String>>>();
+		try {
+			InputStream is = new FileInputStream(path);
+			XSSFWorkbook workBook = new XSSFWorkbook(is);
+			//遍历Excel中sheet数
+			for (int sheetIndex = 0; sheetIndex < workBook.getNumberOfSheets(); sheetIndex++) {
+				XSSFSheet sheet = workBook.getSheetAt(sheetIndex);
+				if(null==sheet){
+					continue;
+				}
+				List<List<String>> tableList = new ArrayList<List<String>>();
+				//遍历sheet中所有行
+				for (int rowIndex = 0; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+					XSSFRow row = sheet.getRow(rowIndex);
+					int colMinIndex = row.getFirstCellNum();
+					int colMaxIndex = row.getLastCellNum();
+					List<String> rowList = new ArrayList<String>();
+					//遍历行中所有列
+					for (int colIndex = colMinIndex; colIndex < colMaxIndex; colIndex++) {
+						XSSFCell col = row.getCell(colIndex);
+						if(null==col||col.equals("")){
+							continue;
+						}
+						rowList.add(getStringVal(col));
+					}
+					tableList.add(rowList);
+				}
+				result.add(tableList);
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			LOG.error(e);
+			return null;
+		}
+		return result;
+	}
+	
+	
+	public static List<List<List<String>>> readXls(InputStream is){
+		List<List<List<String>>> result = new ArrayList<List<List<String>>>();
+		try {
+			HSSFWorkbook workBook = new HSSFWorkbook(is);
+			//遍历Excel中sheet数
+			for (int sheetIndex = 0; sheetIndex < workBook.getNumberOfSheets(); sheetIndex++) {
+				HSSFSheet sheet = workBook.getSheetAt(sheetIndex);
+				if(null==sheet){
+					continue;
+				}
+				List<List<String>> tableList = new ArrayList<List<String>>();
+				//遍历sheet中所有行
+				for (int rowIndex = 0; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+					HSSFRow row = sheet.getRow(rowIndex);
+					int colMinIndex = row.getFirstCellNum();
+					int colMaxIndex = row.getLastCellNum();
+					List<String> rowList = new ArrayList<String>();
+					//遍历行中所有列
+					for (int colIndex = colMinIndex; colIndex < colMaxIndex; colIndex++) {
+						HSSFCell col = row.getCell(colIndex);
+						if(null==col||col.equals("")){
+							rowList.add("");
+							continue;
+						}
+						rowList.add(getStringVal(col));
+					}
+					tableList.add(rowList);
+				}
+				result.add(tableList);
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			LOG.error(e);
+			return null;
+		}
+		return result;
+	}
+	
+	
+	public static List<List<List<String>>> readXlsx(InputStream is){
+		List<List<List<String>>> result = new ArrayList<List<List<String>>>();
+		try {
+			XSSFWorkbook workBook = new XSSFWorkbook(is);
+			//遍历Excel中sheet数
+			for (int sheetIndex = 0; sheetIndex < workBook.getNumberOfSheets(); sheetIndex++) {
+				XSSFSheet sheet = workBook.getSheetAt(sheetIndex);
+				if(null==sheet){
+					continue;
+				}
+				List<List<String>> tableList = new ArrayList<List<String>>();
+				//遍历sheet中所有行
+				for (int rowIndex = 0; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+					XSSFRow row = sheet.getRow(rowIndex);
+					int colMinIndex = row.getFirstCellNum();
+					int colMaxIndex = row.getLastCellNum();
+					List<String> rowList = new ArrayList<String>();
+					//遍历行中所有列
+					for (int colIndex = colMinIndex; colIndex < colMaxIndex; colIndex++) {
+						XSSFCell col = row.getCell(colIndex);
+						if(null==col||col.equals("")){
+							rowList.add("");
+							continue;
+						}
+						rowList.add(getStringVal(col));
+					}
+					tableList.add(rowList);
+				}
+				result.add(tableList);
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			LOG.error(e);
+			return null;
+		}
+		return result;
+	}
+	
+	
+	private static String getStringVal(HSSFCell col){
+		switch (col.getCellType()) {
+			case Cell.CELL_TYPE_BOOLEAN:
+				return col.getBooleanCellValue()?"True":"False";
+			case Cell.CELL_TYPE_STRING:
+				return col.getStringCellValue();
+			case Cell.CELL_TYPE_FORMULA:
+				return col.getCellFormula();
+			case Cell.CELL_TYPE_NUMERIC:
+				col.setCellType(Cell.CELL_TYPE_STRING);
+				return col.getStringCellValue();
+			default:
+				LOG.warn("没有添加此类型数据的判断,类型ID:"+col.getCellType());
+				return col.getStringCellValue();
+		}
+	}
+	
+	private static String getStringVal(XSSFCell col){
+		switch (col.getCellType()) {
+			case Cell.CELL_TYPE_BOOLEAN:
+				return col.getBooleanCellValue()?"True":"False";
+			case Cell.CELL_TYPE_STRING:
+				return col.getStringCellValue();
+			case Cell.CELL_TYPE_FORMULA:
+				return col.getCellFormula();
+			case Cell.CELL_TYPE_NUMERIC:
+				col.setCellType(Cell.CELL_TYPE_STRING);
+				return col.getStringCellValue();
+			default:
+				LOG.warn("没有添加此类型数据的判断,类型ID:"+col.getCellType());
+				return col.getStringCellValue();
+		}
+	}
+	
+	public static List<Map<Integer, List<String>>> formatList(String path){
+		List<Map<Integer, List<String>>> list = new ArrayList<Map<Integer,List<String>>>();
+		List<List<List<String>>> excel = new ArrayList<List<List<String>>>();
+		if(path.substring(path.lastIndexOf(".")+1).equals("xlsx")){
+			excel = readXlsx(path);
+		}else{
+			excel = readXls(path);
+		}
+		for (List<List<String>> table : excel) {
+			Map<Integer,List<String>> map = new HashMap<Integer,List<String>>();
+			for (List<String> row : table) {
+				map.put(Integer.valueOf(row.get(0)), row);
+			}
+			list.add(map);
+		}
+		return list;
+	}
+	
+	/**
+	 * 格式化数据为键值对格式
+	 * @author dengpeng
+	 * @param excel
+	 * @return
+	 */
+	public static List<Map<String, List<String>>> formatData(List<List<List<String>>> excel){
+		List<Map<String, List<String>>> list = new ArrayList<Map<String,List<String>>>();
+		for (List<List<String>> table : excel) {
+			Map<String,List<String>> map = new HashMap<String,List<String>>();
+			for (List<String> row : table) {
+				map.put(row.get(0), row);
+			}
+			list.add(map);
+		}
+		return list;
+	}
+	
+	/**
+	 * 展现指定用例的数据文件
+	 * @author dengpeng
+	 * @param excel
+	 * @return
+	 */
+	public static List<List<Map<String, String>>> formatShowData(List<List<List<String>>> excel){
+		List<List<Map<String, String>>> list = new ArrayList<List<Map<String,String>>>();
+		for (List<List<String>> table : excel) {
+			List<Map<String,String>> rl = new ArrayList<Map<String,String>>();
+			for (List<String> row : table) {
+				Map<String,String> map = new HashMap<String,String>();
+				int i = 0;
+				String resultDesc = "";
+				for (String col : row) {
+					if(i==0){
+						map.put("step", col);
+					}else if(i==1){
+						map.put("desc", col);
+					}else{
+						resultDesc += ","+col;
+					}
+					++i;
+				}
+				map.put("resultDesc", !resultDesc.equals("")?resultDesc.substring(1):resultDesc);
+				rl.add(map);
+			}
+			list.add(rl);
+		}
+		return list;
+	}
+	
+	/**
+	 * 公共用例格式化数据
+	 * @author dengpeng
+	 * @param list
+	 * @return
+	 */
+	public static Map<String, List<String>> getPubTestData(Map<String, List<String>> baseMap,String step){
+		Map<String, List<String>> map = new HashMap<String, List<String>>();
+		String regex = "^"+step+"[0-9]*$";
+		for (String key : baseMap.keySet()) {
+			if(Pattern.matches(regex, key)){
+				String k = key.substring(step.length());
+				map.put(k, baseMap.get(key));
+			}
+		}
+		return map;
+	}
+	
+	
+	public static void main(String[] args) {
+		String path = "C:\\Users\\Administrator\\Desktop\\1.xlsx";
+		List<List<List<String>>> excel = new ArrayList<List<List<String>>>();
+		if(path.substring(path.lastIndexOf(".")+1).equals("xlsx")){
+			excel = readXlsx(path);
+		}else{
+			excel = readXls(path);
+		}
+		Map<String, List<String>> m = getPubTestData(formatData(excel).get(0),"8");
+		for (String key : m.keySet()) {
+			System.out.println(m.get(key));
+		}
+//		for (List<List<String>> table : excel) {
+//			for (List<String> row : table) {
+//				for (String col : row) {
+//					System.out.print(col+"  ");
+//				}
+//				System.out.println("");
+//			}
+//		}
+		
+	}
+}

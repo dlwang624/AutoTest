@@ -1,0 +1,125 @@
+package org.czy.entity;
+
+public class TestSumReport {
+	private int failCount;
+	private int failLeaveOut;
+	private float failRate;
+	private int urgent;
+	private int veryHigh;
+	private int high;
+	private int medium;
+	private int low;
+	private float rate;
+	private int touchStepNum;
+	private int execStepNum;
+	private int execTestCount;
+	private String testRate;
+	private float reviewRate;
+	
+	private int passnum;
+	private int num;
+	public int getPassnum() {
+		return passnum;
+	}
+	public void setPassnum(int passnum) {
+		this.passnum = passnum;
+	}
+	public int getNum() {
+		return num;
+	}
+	public void setNum(int num) {
+		this.num = num;
+	}
+	public int getFailCount() {
+		return failCount;
+	}
+	public void setFailCount(int failCount) {
+		this.failCount = failCount;
+	}
+	public int getFailLeaveOut() {
+		return failLeaveOut;
+	}
+	public void setFailLeaveOut(int failLeaveOut) {
+		this.failLeaveOut = failLeaveOut;
+	}
+	public float getFailRate() {
+		return failRate;
+	}
+	public void setFailRate(float failRate) {
+		this.failRate = failRate;
+	}
+	public int getUrgent() {
+		return urgent;
+	}
+	public void setUrgent(int urgent) {
+		this.urgent = urgent;
+	}
+	public int getVeryHigh() {
+		return veryHigh;
+	}
+	public void setVeryHigh(int veryHigh) {
+		this.veryHigh = veryHigh;
+	}
+	public int getHigh() {
+		return high;
+	}
+	public void setHigh(int high) {
+		this.high = high;
+	}
+	public int getMedium() {
+		return medium;
+	}
+	public void setMedium(int medium) {
+		this.medium = medium;
+	}
+	public int getLow() {
+		return low;
+	}
+	public void setLow(int low) {
+		this.low = low;
+	}
+	public float getRate() {
+		return rate;
+	}
+	public void setRate(float rate) {
+		this.rate = rate;
+	}
+	public int getTouchStepNum() {
+		return touchStepNum;
+	}
+	public void setTouchStepNum(int touchStepNum) {
+		this.touchStepNum = touchStepNum;
+	}
+	public int getExecStepNum() {
+		return execStepNum;
+	}
+	public void setExecStepNum(int execStepNum) {
+		this.execStepNum = execStepNum;
+	}
+	public int getExecTestCount() {
+		return execTestCount;
+	}
+	public void setExecTestCount(int execTestCount) {
+		this.execTestCount = execTestCount;
+	}
+	public String getTestRate() {
+		return testRate;
+	}
+	public void setTestRate(String testRate) {
+		this.testRate = testRate;
+	}
+	public float getReviewRate() {
+		return reviewRate;
+	}
+	public void setReviewRate(float reviewRate) {
+		this.reviewRate = reviewRate;
+	}
+	public float getSuccessRate() {
+		return successRate;
+	}
+	public void setSuccessRate(float successRate) {
+		this.successRate = successRate;
+	}
+	private float successRate;
+
+}

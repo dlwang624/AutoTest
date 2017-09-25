@@ -1,0 +1,75 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/common.css"/>
+<link rel="stylesheet" href="css/table.css"/>
+<title>自动化测试统计</title>
+<style type="text/css">
+.loadingParent{ width:150px; margin:0 auto;}
+.loadingParent canvas{ display:block; margin:0 auto;}
+</style>
+</head>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script type="text/javascript" src="js/canvas/cycle.js"></script>
+<script type="text/javascript" src="js/canvas/hidpi-canvas.min.js"></script>
+<script type="text/javascript" src="js/canvas/modernizr-2.6.2.min.js"></script>
+<body>
+<div class="main10">
+	<div><input type="button" value="返回" class="backBtn" id="back"></div>
+	<table class="formdata" id="steptable"> 
+	<caption>${name }&nbsp;用户统计</caption> 
+		<tr>
+			<th scope="col">行号</th> 
+			<th scope="col" style="width: 250px;">用例名</th> 
+			<th scope="col" style="width: 150px;">创建时间</th> 
+			<th scope="col" style="width: 75px;">执行次数</th>
+			<th scope="col" style="width: 75px;">总步骤数</th>
+			<th scope="col" style="width: 150px;padding:0;">Fail比例</th> 
+		</tr>
+		<c:if test="${null == list}">
+			<tr>
+				<td scope="col" colspan="6"><h1>此用户没有创建用例</h1></td> 
+			</tr>
+		</c:if>
+		<c:forEach items="${list }" varStatus="status" var="desc">
+			<tr>
+				<td scope="col">${status.index+1 }</td> 
+				<td scope="col">${ desc.testName}</td> 
+				<td scope="col">${ desc.date}</td> 
+				<td scope="col" style="font-size:18px;">${ desc.execCount}</td> 
+				<td scope="col" style="font-size:18px;">${ desc.stepCount}</td> 
+				<td scope="col">
+					<div class="loadingParent">
+						<input type="text" id="${ desc.id}" value="${desc.percent}" class="none">
+						<canvas id="canvasIndex${ desc.id}" width="150" height="150" amount="10000" vote="10000" tip="50">${desc.percent}%</canvas>
+					</div>
+				</td> 
+			</tr>
+		</c:forEach>
+	</table>
+</div>
+<script type="text/javascript">
+$(function(){
+	$("#back").click(function(){
+		window.location.href="count/main.htm";
+	});
+	$(".loadingParent").each(function(){
+		var per = $(this).children(".none").val();
+		var id = $(this).children(".none").attr("id");
+		var width=$(".loadingParent").width();
+		var option={
+			   percent:per,   //百分比数值
+			   w:width,          //宽度
+			   oneCircle:"ture"  //是否是整个圆  默认半圆
+			 }
+		 $("#canvasIndex"+id).audios2(option);
+	});
+});
+</script>
+</body>
+</html>

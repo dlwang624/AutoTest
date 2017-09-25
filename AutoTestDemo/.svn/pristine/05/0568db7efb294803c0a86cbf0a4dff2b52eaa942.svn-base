@@ -1,0 +1,25 @@
+package org.czy.service;
+
+import java.util.List;
+
+import org.czy.entity.Project;
+import org.czy.entity.ProjectCount;
+import org.czy.entity.Qcdb;
+
+public interface ProjectService {
+	boolean addProject(Project pro);
+	
+	List<Project> getAll();
+	
+	Project getProjectByID(int id);
+	
+	Project getProjectByProID(String proid);
+	
+	boolean updateProject(Project pro);
+	
+	List<Project> getByIds(String[] ids);
+	
+	List<Project> getProById(Qcdb db);
+	
+	List<ProjectCount> getProCount(Qcdb db);
+}

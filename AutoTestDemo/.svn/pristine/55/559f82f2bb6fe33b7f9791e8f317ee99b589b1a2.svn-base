@@ -1,0 +1,71 @@
+package org.czy.service;
+
+import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.annotations.Param;
+import org.czy.entity.Description;
+import org.czy.entity.MainTestInfo;
+import org.czy.entity.Project;
+import org.czy.entity.Qcdb;
+import org.czy.entity.Test;
+import org.czy.entity.TestCount;
+import org.czy.entity.TestList;
+import org.czy.entity.TreeFolder;
+import org.czy.entity.UserCount;
+import org.springframework.web.multipart.MultipartFile;
+
+public interface TestService {
+
+	boolean addTest(Test test,List<Description> descList,String projectid);
+	
+	boolean updateTest(Test test,List<Description> descList);
+	
+	Object[] syncTest(String testname,String projectid,int uid,Qcdb db);
+	
+	Map<String, Object> selTestAndDescByID(int id);
+	
+	boolean delDesc(int id);
+	
+	void checkQC(String testname,String projectid,String uid,Qcdb db);
+
+	List<TestList> getAllTest(Qcdb db,String projectid);
+	
+	void syncFolder(Qcdb db,int projectid);
+	
+	List<Test> expect(String testname,String proid);
+	
+	Test getTest(int id);
+	
+	boolean updateTest(Test test);
+	
+	List<Project> getProById(Qcdb db);
+	
+	boolean selSyncTest(Qcdb db,int testid,String proid);
+	
+	List<Test> getTestByProjectIds(int pid);
+	
+	List<TestCount> selectByUID(int uid);
+	
+	List<UserCount> getUserCount();
+	
+	List<Test> getUserStatusTest(int flag,int uid,String[] ids);
+	
+	List<TreeFolder> getTestTree(Qcdb db);
+	
+	List<TreeFolder> getTestTree(Qcdb db,String testids);
+	
+	void exportExcelData(int id,String filepath);	
+	
+	boolean dataHandle(String id,Qcdb db,MultipartFile file,int upuserid);
+	
+	String baseCopyToNew(Qcdb db,String baseFolderID,String newFolderID,int newUID);
+	
+	MainTestInfo welcomeInfo(int uid,String ids);
+	
+	List<Test> selLimitByData(String[] ids,int uid);
+	
+	List<Test> getUserAllTest(int uid,String[] ids);
+	
+	List<Test> getQcdbTestByTName(String testName,String[] ids);
+}

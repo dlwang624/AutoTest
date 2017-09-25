@@ -1,0 +1,96 @@
+package org.czy.filter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringTokenizer;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.apache.log4j.Logger;
+import org.czy.controller.TestController;
+import org.czy.entity.Qcdb;
+import org.czy.util.ServerCount;
+import org.springframework.http.HttpStatus;
+
+public class SessionFilter implements Filter{
+	Logger logger = Logger.getLogger(SessionFilter.class);
+
+
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        if (!(servletRequest instanceof HttpServletRequest) || !(servletResponse instanceof HttpServletResponse)) {
+            throw new ServletException("OncePerRequestFilter just supports HTTP requests");
+        }
+        HttpServletRequest httpRequest = (HttpServletRequest) servletRequest;
+        HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
+        HttpSession session = httpRequest.getSession(true);
+        StringBuffer url = httpRequest.getRequestURL();
+        if(url.indexOf("/releaseCheck/")>0){
+        	return;
+        }
+        Object qcdb = session.getAttribute("QCDB");
+        Object uid = session.getAttribute("uid");
+        Object nickname = session.getAttribute("nickname");
+        Object dbname = session.getAttribute("dbname");
+        Object mainLi = session.getAttribute("mainLi");
+        Object mainRoot = session.getAttribute("mainRoot");
+        Object allFail = session.getAttribute("allFail");
+        Object allUnknown = session.getAttribute("allUnknown");
+        Object layoutfull = session.getAttribute("layoutfull");
+        Object sidebar = session.getAttribute("sidebar");
+//        Qcdb qcdb = object == null ? null : (Qcdb) object;
+        if (qcdb == null||uid==null||nickname==null||dbname == null||mainLi==null||mainRoot==null||allFail==null||allUnknown==null||layoutfull==null||sidebar==null) {
+//            boolean isAjaxRequest = isAjaxRequest(httpRequest);
+//            if (isAjaxRequest) {
+//            	
+//                httpResponse.setCharacterEncoding("UTF-8");
+//                httpResponse.sendError(HttpStatus.UNAUTHORIZED.value(),
+//                        "您已经太长时间没有操作,请刷新页面");
+//            }
+            httpResponse.sendRedirect("/AutoTestDemo/user/index.htm");
+            return;
+        }
+        httpRequest.getSession().setAttribute("aggregate", ServerCount.getServerCount());
+        filterChain.doFilter(httpRequest, servletResponse);
+        return;
+    }
+
+    /**
+     * 判断是否为Ajax请求
+     *
+     * @param request HttpServletRequest
+     * @return 是true, 否false
+     */
+    public static boolean isAjaxRequest(HttpServletRequest request) {
+        return request.getRequestURI().startsWith("/api");
+//        String requestType = request.getHeader("X-Requested-With");
+//        return requestType != null && requestType.equals("XMLHttpRequest");
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+            /*如果需要注入，请取消注释*/
+//           ServletContext servletContext = filterConfig.getServletContext();
+//            WebApplicationContext applicationContext = (WebApplicationContext) servletContext.
+//                    getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
+//            if (null == topConstantsImpl) {
+//                //从Spring AC 中加载app configuration对象
+//                topConstantsImpl = applicationContext.getBean(TopConstantsImpl.class);
+//        }
+    }
+
+    @Override
+    public void destroy() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+}

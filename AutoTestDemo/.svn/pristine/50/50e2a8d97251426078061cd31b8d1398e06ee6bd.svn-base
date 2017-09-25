@@ -1,0 +1,69 @@
+package org.czy.util;
+
+import java.util.LinkedList;
+import java.util.Queue;
+
+public class RunTestQueue {
+
+	private static final int MAXLIMIT = 1;
+	private static Queue<String> userQueue = new LinkedList<String>();
+	
+	public static boolean addQueue(String ip){
+		if(userQueue.size()<MAXLIMIT){
+			if(userQueue.contains(ip)){
+				userQueue.remove(ip);
+			}
+			return userQueue.offer(ip);
+		}else{
+			return false;
+		}
+		
+	}
+	
+	public static int queueIndex(String ip){
+		int i = 0;
+		for (String uq : userQueue) {
+			if(uq.equals(ip)){
+				break;
+			}
+			i++;
+		}
+		return i;
+	}
+	
+	public static void deleteQueue(String ip){
+		userQueue.remove(ip);
+	}
+	
+	public static boolean queueFull(){
+		return userQueue.size()>=10?false:true;
+	}
+	
+	public static int queueSize(){
+		return userQueue.size();
+	}
+	
+	public static String queuePeek(){
+		return userQueue.peek();
+	}
+	
+	public static void main(String[] args) {
+		addQueue("11");
+		addQueue("22");
+		addQueue("33");
+		addQueue("44");
+		addQueue("55");
+		addQueue("66");
+		addQueue("77");
+		addQueue("88");
+		addQueue("99");
+		addQueue("00");
+		addQueue("1");
+		System.out.println(queueFull());
+		System.out.println(queuePeek());
+		deleteQueue("11");
+		System.out.println(queuePeek());
+		deleteQueue("33");
+		System.out.println(queuePeek());
+	}
+}

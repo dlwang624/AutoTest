@@ -1,0 +1,110 @@
+package org.czy.entity;
+
+public class TestSumReport {
+	private String failCount;
+	private String failLeaveOut;
+	private String failRate;
+	private String urgent;
+	private String veryHigh;
+	private String high;
+	private String medium;
+	private String low;
+	private String rate;
+	private String touchStepNum;
+	private String execStepNum;
+	private String execTestCount;
+	private String testRate;
+	private String reviewRate;
+	public String getFailCount() {
+		return failCount;
+	}
+	public void setFailCount(String failCount) {
+		this.failCount = failCount;
+	}
+	public String getFailLeaveOut() {
+		return failLeaveOut;
+	}
+	public void setFailLeaveOut(String failLeaveOut) {
+		this.failLeaveOut = failLeaveOut;
+	}
+	public String getFailRate() {
+		return failRate;
+	}
+	public void setFailRate(String failRate) {
+		this.failRate = failRate;
+	}
+	public String getUrgent() {
+		return urgent;
+	}
+	public void setUrgent(String urgent) {
+		this.urgent = urgent;
+	}
+	public String getVeryHigh() {
+		return veryHigh;
+	}
+	public void setVeryHigh(String veryHigh) {
+		this.veryHigh = veryHigh;
+	}
+	public String getHigh() {
+		return high;
+	}
+	public void setHigh(String high) {
+		this.high = high;
+	}
+	public String getMedium() {
+		return medium;
+	}
+	public void setMedium(String medium) {
+		this.medium = medium;
+	}
+	public String getLow() {
+		return low;
+	}
+	public void setLow(String low) {
+		this.low = low;
+	}
+	public String getRate() {
+		return rate;
+	}
+	public void setRate(String rate) {
+		this.rate = rate;
+	}
+	public String getTouchStepNum() {
+		return touchStepNum;
+	}
+	public void setTouchStepNum(String touchStepNum) {
+		this.touchStepNum = touchStepNum;
+	}
+	public String getExecStepNum() {
+		return execStepNum;
+	}
+	public void setExecStepNum(String execStepNum) {
+		this.execStepNum = execStepNum;
+	}
+	public String getExecTestCount() {
+		return execTestCount;
+	}
+	public void setExecTestCount(String execTestCount) {
+		this.execTestCount = execTestCount;
+	}
+	public String getTestRate() {
+		return testRate;
+	}
+	public void setTestRate(String testRate) {
+		this.testRate = testRate;
+	}
+	public String getReviewRate() {
+		return reviewRate;
+	}
+	public void setReviewRate(String reviewRate) {
+		this.reviewRate = reviewRate;
+	}
+	public String getSuccessRate() {
+		return successRate;
+	}
+	public void setSuccessRate(String successRate) {
+		this.successRate = successRate;
+	}
+	private String successRate;
+
+}

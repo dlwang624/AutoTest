@@ -1,0 +1,128 @@
+package org.czy.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.czy.dao.ProjectMapper;
+import org.czy.dao.TestMapper;
+import org.czy.entity.Project;
+import org.czy.entity.ProjectCount;
+import org.czy.entity.ProjectList;
+import org.czy.entity.Qcdb;
+import org.czy.entity.Test;
+import org.czy.service.ProjectService;
+import org.springframework.stereotype.Service;
+
+import com.utils.tools.Tool;
+
+@Service
+public class ProjectServiceImpl implements ProjectService {
+
+	@Resource
+	private ProjectMapper projectMapper;
+	
+	@Resource
+	private TestMapper testMapper;
+	
+	@Override
+	public boolean addProject(Qcdb db,Project pro) {
+		Project p = projectMapper.selectByPID(pro.getProjectid());
+		if(null!=p){
+			return false;
+		}else{
+			if(Tool.checkQCFolder(db, pro.getProjectid())){
+				return projectMapper.insert(pro)>0?true:false;
+			}else{
+				return false;
+			}
+		}
+	}
+
+	@Override
+	public List<Project> getAll() {
+		return projectMapper.selectAll();
+	}
+
+	@Override
+	public Project getProjectByID(int id) {
+		return projectMapper.selectByPrimaryKey(id);
+	}
+
+	@Override
+	public boolean updateProject(Qcdb db,Project pro) {
+		if(Tool.checkQCFolder(db, pro.getProjectid())){
+			return projectMapper.updateByPrimaryKey(pro)>0?true:false;
+		}else{
+			return false;
+		}
+	}
+
+	@Override
+	public List<Project> getByIds(String[] ids) {
+		return projectMapper.selectAllByProID(ids);
+	}
+
+	@Override
+	public Project getProjectByProID(String proid) {
+		return projectMapper.selectByPID(proid);
+	}
+
+	@Override
+	public List<ProjectList> getProById(Qcdb db) {
+		if(!db.getProjectid().equals("")){
+			List<Project> list = projectMapper.selectAllByProID(db.getProjectid().split(","));
+			List<ProjectList> plist = new ArrayList<ProjectList>();
+			for (Project p : list) {
+				ProjectList pl = new ProjectList();
+				pl.setId(p.getId());
+				pl.setName(p.getName());
+				pl.setProjectid(p.getProjectid());
+				List<Test> lt = testMapper.selectByIds(p.getId());
+				if(lt!=null&&lt.size()>0){
+					pl.setFlag(false);
+				}else{
+					pl.setFlag(true);
+				}
+				plist.add(pl);
+			}
+			return plist;
+		}else{
+			return null;
+		}
+	}
+
+	@Override
+	public List<ProjectCount> getProCount(Qcdb db) {
+		List<ProjectCount> list = new ArrayList<ProjectCount>();
+			if(!db.getProjectid().equals("")){
+			List<Project> projects = projectMapper.selectAllByProID(db.getProjectid().split(","));
+			for (Project project : projects) {
+				ProjectCount cou = new ProjectCount();
+				cou.setId(project.getId());
+				cou.setName(project.getName());
+				cou.setProjectid(project.getProjectid());
+				int fail=0,success=0;
+				for (Test test : testMapper.selectByIds(project.getId())) {
+					fail += test.getFail();
+					success += test.getSuccess();
+				}
+				double count = fail+success;
+				cou.setPercent((fail/count)*100);
+				cou.setFail(fail);
+				cou.setSuccess(success);
+				list.add(cou);
+			}
+			return list;
+		}else{
+			return null;
+		}
+	}
+
+	@Override
+	public boolean delProject(int id) {
+		return projectMapper.deleteByPrimaryKey(id)>0?true:false;
+	}
+
+}

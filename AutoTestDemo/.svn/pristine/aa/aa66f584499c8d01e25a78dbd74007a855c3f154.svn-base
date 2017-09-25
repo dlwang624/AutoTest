@@ -1,0 +1,105 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/common.css"/>
+<link rel="stylesheet" href="css/ExecTest.css"/>
+<title>自动化测试用例执行</title>
+<style type="text/css">
+select{
+    font-size:14px;
+	line-height:25px;
+	padding:5px 0px; 
+}
+#iframeName{
+	width: 300px;
+    font-size: 12px;
+    line-height: 25px;
+    margin: 0px 0px 3px 0px;
+}
+#execNum{
+	width: 30px;
+    font-size: 12px;
+    line-height: 25px;
+    margin: 0px 0px 3px 0px;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="main8">
+	<p>客户的ID: ${uid}</p>
+	<p>客户的IP: ${userAddress}</p>
+	<p>服务器IP: ${localAddress}</p>
+	<div><input type="button" value="返回" class="backBtn" id="back"></div>
+	<input id="userAddress" type="text" value="${userAddress}" class="none"/>
+	<input id="localAddress" type="text" value="${localAddress}" class="none"/>
+	<input id="msg" type="text" value="${msg }" class="none"/>
+	<div class="clearfix">
+		<div class="clearfix">
+			<div class="fl w100 tr mr5 h30">文件夹名:</div>
+			<div class="fl">
+				<select id="projectid" style="font-size:13px;padding:2px;">
+					<option value="请选择文件夹名">请选择文件夹名</option>
+					<c:forEach items="${prolist}" varStatus="status" var="pro">
+						<option value="${pro.id }">
+							${pro.name}
+						</option>
+					</c:forEach>
+				</select>
+			</div>
+			<div id="fileshowmsg" class="fl none"><p style="color:red;">请选择文件夹名!</p></div>
+		</div>
+		<div class="fl clearfix">
+			<div class="fl w100 tr mr5 h30">用例名:</div>
+			<div class="fl relative">
+				<input type="text" id="testName"/>
+				<div class="expect">
+					<ul id="expect" style="z-index:999"></ul>
+				</div>
+			</div>
+		</div>
+		<form action="file/filesUploadftp.htm" method="post" enctype="multipart/form-data" id="filedata">
+			<div class="fl clearfix">
+				<div class="fl w100 tr mr5 h30">选择文件:</div>
+				<div class="fl">
+					<input id="testID" name="testID" class="none">
+					<div>
+						<input type="file" name="files" id="filename" multiple="true" accept=".xls,.xlsx">
+					</div>
+				</div>
+				<div class="fl"><input type="button" id="uploadFile" value="上传"> </div>
+			</div>
+		</form>
+		
+		<div class="fl clearfix">
+			<div class="fl w100 tr mr5 h30">用例已有数据文件:</div>
+			<div class="fl" id="excelDownload">
+				<h1>请选择用例</h1>
+			</div>
+		</div>
+	</div>
+</div>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script type="text/javascript" src="js/socket.js"></script>
+<script type="text/javascript" src="js/jquery.tmpl.min.js"></script>
+<script id="expectTemplate" type="text/x-jquery-tmpl">
+	<li onclick="expectItemClick(this)" value="{{= id}}">{{= testname}}</li>
+</script>
+<script id="excelTemplate" type="text/x-jquery-tmpl">
+<div class="clearfix" name="delete">
+	<div class="fl w300 h30 tl">{{= filename}}</div>
+	<div class="fl">
+		<input type="button" value="下载" onclick="excelDownload('{{= filename}}')">
+		<input type="button" value="删除" onclick="exceldel('{{= filename}}',this)">
+	</div>
+</div>
+</script>
+<script type="text/javascript" src="js/testUpload.js"></script>
+</body>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/common.css"/>
+<link rel="stylesheet" href="css/table.css"/>
+<title>自动化测试项目列表</title>
+<style type="text/css">
+input{
+	line-height: 25px;
+	padding:1px 2px;
+	width:150px;
+}
+</style>
+</head>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<body>
+<div class="main5">
+<form id="pro">
+	<div><input type="button" value="返回" class="backBtn" id="back"></div>
+	<div class="clearfix">
+		<input type="text" value="${pro.id }" name="id" class="none">
+		<div class="fl w100 tr mt5">QC文件夹编号:</div>
+		<div class="fl"><input name="projectid" value="${pro.projectid }"></div>
+	</div>
+	<div class="clearfix">
+		<div class="fl w100 tr mt5">QC文件夹名:</div>
+		<div class="fl"><input name="name" value="${pro.name }"></div>
+	</div>
+	<div class="clearfix">
+		<div class="fl w100 tr mt5">&nbsp;</div>
+		<div class="fl"><input value="修改" id="updatePro" type="button"></div>
+	</div>
+</form>
+</div>
+<script type="text/javascript">
+$(function(){
+	$("#back").click(function(){
+		window.location.href="Exec/projectlist.htm";
+	});
+	
+	$("#updatePro").click(function(){
+		var name = $("input[name='projectname']").val();
+		var projectid = $("input[name='projectid']").val();
+		if(name==""){
+			alert("文件夹名不能为空");
+			return;
+		}
+		if(projectid==""){
+			alert("文件夹编号不能为空");
+			return;
+		}
+		if(name==""&&projectid==""){
+			alert("文件夹名和编号不能为空");
+			return;
+		}
+		$.ajax({
+			 type: 'POST',
+			  url: "Exec/updatepro.htm",
+			  data:$("#pro").serialize(),
+			  dataType: "json",
+			  success: function(data){
+				alert(data.msg);
+			  },
+			  error: function (xhr, status, text) {
+		          switch (status) {
+		             case 404:
+		                 console.log("File not found");
+		                 break;
+		             case 500:
+		                 console.log("Server error");
+		                 break;
+		             case 0:
+		                 console.log("Request aborted");
+		                 break;
+		             default:
+		            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+		            	 		+ "readyState: " + xhr.readyState + "\n"
+		            	 		+ "responseText: "+ xhr.responseText + "\n"
+		            	 		+ "status: " + xhr.status + "\n"
+		            	 console.log(msg);
+		            }
+		        }
+			
+		});
+	});
+});
+</script>
+</body>
+</html>

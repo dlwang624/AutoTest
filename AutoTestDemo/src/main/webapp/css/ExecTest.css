@@ -1,0 +1,60 @@
+.main input{
+	font-size: 14px;
+	line-height: 20px;
+}
+.textarea{
+	text-align: left;
+	width: 600px;
+	min-height: 600px;
+	max-height: 600px;
+	_height: 600px;
+	margin-left: auto;
+	margin-right: auto;
+	padding: 3px;
+	outline: 0;
+	border: 1px solid #a0b3d6;
+	font-size: 12px;
+	word-wrap: break-word;
+	overflow-x: hidden;
+	overflow-y: auto;
+	_overflow-y: visible;
+}
+#testName{
+	width: 300px;
+	font-size:12px;
+	line-height:25px;
+    margin:0px; 
+}
+input[type="button"]{
+	width: 80px;
+	font-size:12px;
+	line-height:25px;
+    margin:0px; 
+}
+.expect{
+	display: none;
+	position: absolute;
+}
+.expect ul{
+	list-style: none;
+	width: 300px;
+}
+.expect ul li{
+	width: 290px;
+	height: 25px;
+	padding:1px 5px;
+	background: #E2E2E2;
+	color: black;
+	font-weight: bold;
+	font-size: 14px;
+	line-height: 25px;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow:hidden;
+	text-overflow: ellipsis;
+	text-align: left;
+}
+.expect ul li:hover{
+	background: #ABABAB;
+	color: white;
+}

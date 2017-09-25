@@ -1,0 +1,674 @@
+package org.czy.service.impl;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.apache.log4j.Logger;
+import org.czy.dao.DescriptionMapper;
+import org.czy.dao.ProjectMapper;
+import org.czy.dao.TestMapper;
+import org.czy.dao.UserMapper;
+import org.czy.entity.Description;
+import org.czy.entity.Project;
+import org.czy.entity.Qcdb;
+import org.czy.entity.SyncTest;
+import org.czy.entity.Test;
+import org.czy.entity.TestCount;
+import org.czy.entity.TestList;
+import org.czy.entity.TreeFolder;
+import org.czy.entity.TreeTest;
+import org.czy.entity.User;
+import org.czy.entity.UserCount;
+import org.czy.service.TestService;
+import org.czy.util.Daily;
+import org.czy.util.GetMaxOrMin;
+import org.springframework.stereotype.Service;
+
+import com.check.FormatCheck;
+import com.test.RunTest;
+import com.utils.tools.Tool;
+
+@Service
+public class TestServiceImpl implements TestService {
+
+	private final static Logger LOG = Logger.getLogger(TestService.class);
+
+	@Resource
+	private DescriptionMapper descriptionMapper;
+
+	@Resource
+	private TestMapper testMapper;
+
+	@Resource
+	private ProjectMapper projectMapper;
+
+	@Resource
+	private UserMapper userMapper;
+
+	@Override
+	public boolean addTest(Test test, List<Description> descList, String projectid) {
+		Date date = new Date();
+		test.setCreatetime(date);
+		boolean flag = testMapper.insert(test) > 0 ? true : false;
+		int testID = testMapper.selectByTestName(test.getTestname(), projectMapper.selectByPID(projectid).getId())
+				.getId();
+		if (flag) {
+			try {
+				for (Description description : descList) {
+					if (description != null) {
+						description.setTestid(testID);
+						descriptionMapper.insert(description);
+					}
+				}
+				flag = true;
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				LOG.error(e);
+				flag = false;
+			}
+		}
+		return flag;
+	}
+
+	@Override
+	public List<Project> getProById(Qcdb db) {
+		if (!db.getProjectid().equals("")) {
+			List<Project> list = projectMapper.selectAllByProID(db.getProjectid().split(","));
+			return list;
+		} else {
+			return null;
+		}
+
+	}
+
+	@Override
+	public List<TestList> getAllTest(Qcdb db, String projectid) {
+		// 同步QC和CH库中指定文件夹下的用例名
+		List<Test> qclistTemp = Tool.getTestNameID(projectid, db);
+		List<Test> qclist = new ArrayList<Test>();
+		Project pro = projectMapper.selectByPID(projectid);
+		if (pro != null) {
+			List<Test> chlist = testMapper.selectByIds(pro.getId());
+			Map<Integer, Test> map = new HashMap<Integer, Test>();
+			Map<Integer, Test> chmap = new HashMap<Integer, Test>();
+			for (Test t : qclistTemp) {
+				Test qc = testMapper.selectByTidAndName(t.getTestname(), t.getTid());
+				if (qc != null) {
+					map.put(qc.getId(), qc);
+					qclist.add(qc);
+				}
+			}
+			for (Test t : chlist) {
+				chmap.put(t.getId(), t);
+			}
+			for (int i = 0; i < qclist.size(); i++) {
+				Test qc = qclist.get(i);
+				boolean syncflag = false;
+				Test c = new Test();
+				for (int j = 0; j < chlist.size(); j++) {
+					Test ch = chlist.get(j);
+					if (qc.getTestname().equals(ch.getTestname()) && qc.getTid().equals(ch.getTid())) {
+						map.remove(qc.getId());
+						chmap.remove(qc.getId());
+						break;
+					}
+					if (!qc.getTestname().equals(ch.getTestname()) && qc.getTid().equals(ch.getTid())) {
+						// 同步qc和ch库用例名
+						syncflag = true;
+						c = ch;
+						map.remove(qc.getId());
+						chmap.remove(qc.getId());
+						break;
+					}
+				}
+				if (syncflag) {
+					c.setTestname(qc.getTestname());
+					testMapper.updateByPrimaryKey(c);
+				}
+			}
+			// 删除ch库中与QC不存在的用例
+			for (int testID : map.keySet()) {
+				descriptionMapper.deleteByTestID(testID);
+				testMapper.deleteByPrimaryKey(testID);
+			}
+			for (int testID : chmap.keySet()) {
+				descriptionMapper.deleteByTestID(testID);
+				testMapper.deleteByPrimaryKey(testID);
+			}
+		}
+
+		List<TestList> list = new ArrayList<TestList>();
+		// 默认第一个文件夹id获取作为list输出
+		Map<String, String[]> testNameList = Tool.getyongliname(projectid, db);
+		// session共享同步问题判断
+		if (null == testNameList || !(testNameList.size() > 0)) {
+			return null;
+		}
+		// 根据库获取用例集合
+		String[] names = testNameList.get(projectid);
+		for (int i = 0; i < names.length; i++) {
+			TestList tl = new TestList();
+			Test test = testMapper.selectByTestName(names[i], projectMapper.selectByPID(projectid).getId());
+			boolean flag = test != null ? true : false;
+			tl.setTestname(names[i]);
+			tl.setFlag(flag);
+			tl.setTest(test);
+			list.add(tl);
+			if (flag) {
+				LOG.info(names[i] + "已同步");
+			} else {
+				LOG.info(names[i] + "未同步");
+			}
+		}
+		return list.size() == 0 ? null : list;
+	}
+
+	@Override
+	public Map<String, Object> selTestAndDescByID(int id) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("test", testMapper.selectByPrimaryKey(id));
+		List<Description> descTempList = descriptionMapper.selectByTestID(id);
+		List<Description> descList = new ArrayList<Description>();
+		for (Description desc : descTempList) {
+			String description = desc.getDescription();
+			String resultDesc = desc.getResultdescription();
+			if (null != description) {
+				desc.setDescription(description.replace("\"", "&quot;"));
+			}
+			if (null != resultDesc) {
+				desc.setResultdescription(resultDesc.replace("\"", "&quot;"));
+			}
+			descList.add(desc);
+		}
+		map.put("descList", descList);
+		return map;
+	}
+
+	@Override
+	public boolean updateTest(Test test, List<Description> descList) {
+		Date date = new Date();
+		test.setUpdatetime(date);
+		boolean flag = testMapper.updateByPrimaryKey(test) > 0 ? true : false;
+		int testID = test.getId();
+		if (flag) {
+			try {
+				for (Description description : descList) {
+					if (description != null) {
+						description.setTestid(testID);
+						String desc = description.getDescription();
+						String resultDesc = description.getResultdescription();
+						if (null != description) {
+							description.setDescription(desc.replace("&quot;", "\""));
+						}
+						if (null != resultDesc) {
+							description.setResultdescription(resultDesc.replace("&quot;", "\""));
+						}
+						if (description.getId() > 0) {
+							descriptionMapper.updateByPrimaryKey(description);
+						} else {
+							description.setId(null);
+							descriptionMapper.insert(description);
+						}
+					}
+				}
+				flag = true;
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				LOG.error(e);
+				flag = false;
+			}
+		}
+		return flag;
+	}
+
+	@Override
+	public boolean delDesc(int id) {
+		return descriptionMapper.deleteByPrimaryKey(id) > 0 ? true : false;
+	}
+
+	@Override
+	public void checkQC(String testname, String projectid, String uid, Qcdb db) {
+		FormatCheck.formatcheck(testname, uid, db, projectid);
+	}
+
+	@Override
+	public Object[] syncTest(String testname, String projectid, int uid, Qcdb db) {
+		Map<Integer, SyncTest> qcMap = Tool.getyongliAll(testname, db, projectid);
+		if (null == qcMap || !(qcMap.size() > 0)) {
+			return null;
+		}
+		int id = projectMapper.selectByPID(projectid).getId();
+		Test t = testMapper.selectByTestName(testname, id);
+		Object[] idAndFlag = new Object[2];
+		if (null != t) {
+			idAndFlag[0] = t.getId().toString();
+			idAndFlag[1] = true;
+			return idAndFlag;
+		}
+		Test test = new Test();
+		test.setTestname(testname);
+		test.setValue("0");
+		test.setCreatetime(new Date());
+		test.setNewuserid(uid);
+		test.setFail(0);
+		test.setSuccess(0);
+		test.setProjectid(id);
+		test.setTid(Tool.getTestName(projectid, testname, db));
+		test.setFlag(0);
+		boolean flag = testMapper.insert(test) > 0 ? true : false;
+		Test ts = testMapper.selectByTestName(test.getTestname(), projectMapper.selectByPID(projectid).getId());
+		idAndFlag[0] = ts.getId().toString();
+		int serflag = 0;
+		if (flag) {
+			try {
+				for (int key : qcMap.keySet()) {
+					Description desc = new Description();
+					SyncTest synctest = qcMap.get(key);
+					if (synctest.getResultflag() != "") {
+						if (synctest.getResultflag().substring(0, 1).equals(RunTest.paramFlag)) {
+							serflag = 1;
+						}
+					}
+					if (synctest.getDescflag() != "") {
+						if (synctest.getDescflag().substring(0, 1).equals(RunTest.paramFlag)) {
+							serflag = 1;
+						}
+					}
+					desc.setTestid(Integer.valueOf(idAndFlag[0].toString()));
+					if (synctest.getResultname() != null && synctest.getResultname() != "") {
+						desc.setResulttype("xpath");
+					}
+					desc.setResultname(synctest.getResultname());
+					desc.setName(synctest.getName());
+					desc.setType("xpath");
+					desc.setStep(synctest.getStep());
+					descriptionMapper.insert(desc);
+				}
+
+				flag = false;
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				LOG.error(e);
+				flag = true;
+			}
+		}
+		if (serflag == 1) {
+			ts.setFlag(serflag);
+			testMapper.updateByPrimaryKey(ts);
+		}
+		idAndFlag[1] = flag;
+		return idAndFlag;
+	}
+
+	@Override
+	public List<Test> expect(String testname, String proid) {
+		return testMapper.selectLikeTestName(testname, proid);
+	}
+
+	@Override
+	public Test getTest(int id) {
+		return testMapper.selectByPrimaryKey(id);
+	}
+
+	@Override
+	public boolean updateTest(Test test) {
+		return testMapper.updateByPrimaryKey(test) > 0 ? true : false;
+	}
+
+	@Override
+	public boolean selSyncTest(Qcdb db, int testid, String proid) {
+		try {
+			Test t = testMapper.selectByPrimaryKey(testid);
+			String testName = t.getTestname();
+			Map<Integer, SyncTest> qcMap = Tool.getyongliAll(testName, db, proid);
+			if (null == qcMap || !(qcMap.size() > 0)) {
+				return false;
+			}
+			// ch库中占位符list
+			List<Description> chList = descriptionMapper.selectByTestID(testid);
+
+			// 键值对根据步骤获取desc对象
+			Map<Integer, Description> chMap = new HashMap<Integer, Description>();
+
+			// 循环数
+			int chSize = chList.size();
+			int qcSize = qcMap.size();
+
+			// 比较
+			List<String> chNames = new ArrayList<String>();
+			List<String> qcNames = new ArrayList<String>();
+			List<String> chResultNames = new ArrayList<String>();
+			List<String> qcResultNames = new ArrayList<String>();
+			// 获取ch和qc库中最大步骤数
+			int chMax[] = new int[chSize];
+			int qcMax[] = new int[qcSize];
+
+			// 描述填装到list
+			for (int i = 0; i < chSize; i++) {
+				chNames.add(chList.get(i).getName());
+				chResultNames.add(chList.get(i).getResultname());
+				chMap.put(chList.get(i).getStep(), chList.get(i));
+				chMax[i] = chList.get(i).getStep();
+			}
+
+			int index = 0;
+			int serflag = 0; // 参数化为1,非参数化为0
+			for (int key : qcMap.keySet()) {
+				SyncTest synctest = qcMap.get(key);
+				if (synctest.getResultflag() != "") {
+					if (synctest.getResultflag().substring(0, 1).equals(RunTest.paramFlag)) {
+						serflag = 1;
+					}
+				}
+				if (synctest.getDescflag() != "") {
+					if (synctest.getDescflag().substring(0, 1).equals(RunTest.paramFlag)) {
+						serflag = 1;
+					}
+				}
+				qcNames.add(synctest.getName());
+				qcResultNames.add(synctest.getResultname());
+				qcMax[index] = synctest.getStep();
+				index++;
+			}
+			t.setFlag(serflag);
+			testMapper.updateByPrimaryKey(t);
+			// 步骤数
+			// int chCount = GetMaxOrMin.getArrayMax(chMax);
+			int qcCount = GetMaxOrMin.getArrayMax(qcMax);
+
+			for (int i = 1; i <= qcCount; i++) {
+				SyncTest test = qcMap.get(i);
+				Description chtest = chMap.get(i);
+				if (null != chtest) {
+					if (!chtest.getName().equals(test.getName())) {
+						Description cdes = null;
+						for (Description chDesc : chList) {
+							if (test.getName().equals(chDesc.getName())) {
+								cdes = chDesc;
+								chMap.remove(chDesc.getStep());
+								break;
+							}
+						}
+						if (null != cdes) {
+							cdes.setName(test.getName());
+							cdes.setResultname(test.getResultname());
+							cdes.setStep(test.getStep());
+							descriptionMapper.updateByPrimaryKey(cdes);
+						} else {
+							Description desc = new Description();
+							if (test.getResultname() != null && test.getResultname() != "") {
+								desc.setResulttype("xpath");
+							}
+							desc.setResultname(test.getResultname());
+							desc.setName(test.getName());
+							desc.setType("xpath");
+							desc.setTestid(testid);
+							desc.setStep(test.getStep());
+							descriptionMapper.insert(desc);
+						}
+					} else {
+						Description cdes = null;
+						for (Description chDesc : chList) {
+							if (test.getName().equals(chDesc.getName())) {
+								cdes = chDesc;
+								chMap.remove(chDesc.getStep());
+								break;
+							}
+						}
+						cdes.setName(test.getName());
+						cdes.setResultname(test.getResultname());
+						cdes.setStep(test.getStep());
+						descriptionMapper.updateByPrimaryKey(cdes);
+					}
+				} else {
+					Description cdes = null;
+					for (Description chDesc : chList) {
+						if (test.getName().equals(chDesc.getName())) {
+							cdes = chDesc;
+							chMap.remove(chDesc.getStep());
+							break;
+						}
+					}
+					if (null != cdes) {
+						cdes.setName(test.getName());
+						cdes.setResultname(test.getResultname());
+						cdes.setStep(test.getStep());
+						descriptionMapper.updateByPrimaryKey(cdes);
+					} else {
+						Description desc = new Description();
+						if (test.getResultname() != null && test.getResultname() != "") {
+							desc.setResulttype("xpath");
+						}
+						desc.setResultname(test.getResultname());
+						desc.setName(test.getName());
+						desc.setType("xpath");
+						desc.setTestid(testid);
+						desc.setStep(test.getStep());
+						descriptionMapper.insert(desc);
+					}
+				}
+			}
+			for (int step : chMap.keySet()) {
+				Description desc = chMap.get(step);
+				if (null != desc) {
+					descriptionMapper.deleteByPrimaryKey(desc.getId());
+				}
+			}
+
+		} catch (Exception e) {
+			LOG.error(e);
+			return false;
+		}
+		return true;
+	}
+
+	@Override
+	public List<Test> getTestByProjectIds(int pid) {
+		return testMapper.selectByIds(pid);
+	}
+
+	@Override
+	public List<TestCount> selectByUID(int uid) {
+		List<TestCount> list = new ArrayList<TestCount>();
+		List<Test> tests = testMapper.selectByUID(uid);
+		for (Test test : tests) {
+			int fail = test.getFail();
+			double count = fail + test.getSuccess();
+			TestCount tc = new TestCount();
+			tc.setTestName(test.getTestname());
+			tc.setDate(Daily.formatYYMMDD(test.getCreatetime()));
+			tc.setExecCount(fail + test.getSuccess());
+			tc.setStepCount(descriptionMapper.selectCountByTestID(test.getId()));
+			tc.setPercent((fail / count) * 100);
+			tc.setId(test.getId());
+			list.add(tc);
+		}
+		return list;
+	}
+
+	@Override
+	public List<UserCount> getUserCount() {
+		List<UserCount> list = new ArrayList<UserCount>();
+		List<User> users = userMapper.getAll();
+		for (User u : users) {
+			List<Test> tests = testMapper.selectByUID(u.getId());
+			UserCount uc = new UserCount();
+			uc.setTestCount(tests.size());
+			uc.setName(u.getNickname() + "-" + u.getName());
+			int num = 0;
+			for (Test test : tests) {
+				num += descriptionMapper.selectCountByTestID(test.getId());
+			}
+			uc.setStepCount(num);
+			uc.setId(u.getId());
+			list.add(uc);
+		}
+		return list;
+	}
+
+	@Override
+	public List<TreeFolder> getTestTree(Qcdb db) {
+		// 文件夹集合
+		List<TreeFolder> tree = null;
+		String pid = db.getProjectid();
+		String ids[] = null;
+		if (pid != null && pid != "") {
+			ids = pid.split(",");
+		}
+		if (null != ids) {
+			// List<String> pids = projectMapper.selectByProID(ids);
+			if (null != ids) {
+				tree = new ArrayList<TreeFolder>();
+				for (String id : ids) {
+					// 文件夹
+					TreeFolder folder = new TreeFolder();
+					Project pro = projectMapper.selectByPrimaryKey(Integer.valueOf(id));
+					if (pro == null) {
+						continue;
+					}
+					// ch库查询出的用例集合
+					List<Test> tl = testMapper.selectByIdsAndFlag(Integer.valueOf(id), 0);
+					// 用例集合
+					List<TreeTest> tests = new ArrayList<TreeTest>();
+					for (Test test : tl) {
+						// 用例
+						TreeTest treetest = new TreeTest();
+						treetest.setId(test.getId().toString());
+						treetest.setText(test.getTestname());
+						tests.add(treetest);
+					}
+					folder.setText(pro.getName());
+					if (tests.size() > 0) {
+						folder.setChildren(tests);
+					} else {
+						folder.setChildren(null);
+						folder.setState("closed");
+					}
+					tree.add(folder);
+				}
+			}
+		}
+		return tree;
+	}
+
+	@Override
+	public List<TreeFolder> getTestTree(Qcdb db, String testids) {
+		String[] ts = testids.split(",");
+		List<String> tids = Arrays.asList(ts);
+		// 文件夹集合
+		List<TreeFolder> tree = null;
+		String pid = db.getProjectid();
+		String ids[] = null;
+		if (pid != null && pid != "") {
+			ids = pid.split(",");
+		}
+		if (null != ids) {
+			// List<String> pids = projectMapper.selectByProID(ids);
+			if (null != ids) {
+				tree = new ArrayList<TreeFolder>();
+				for (String id : ids) {
+					// 文件夹
+					TreeFolder folder = new TreeFolder();
+					Project pro = projectMapper.selectByPrimaryKey(Integer.valueOf(id));
+					if (null == pro) {
+						continue;
+					}
+					// ch库查询出的用例集合
+					List<Test> tl = testMapper.selectByIdsAndFlag(Integer.valueOf(id), 0);
+					// 用例集合
+					List<TreeTest> tests = new ArrayList<TreeTest>();
+					boolean flag = true;
+					for (Test test : tl) {
+						// 用例
+						TreeTest treetest = new TreeTest();
+						treetest.setId(test.getId().toString());
+						treetest.setText(test.getTestname());
+						if (tids.contains(test.getId().toString())) {
+							treetest.setChecked(true);
+						} else {
+							flag = false;
+							treetest.setChecked(false);
+						}
+						tests.add(treetest);
+					}
+					folder.setText(pro.getName());
+					if (tests.size() > 0) {
+						folder.setChecked(flag);
+						folder.setChildren(tests);
+					} else {
+						folder.setChildren(null);
+						folder.setState("closed");
+					}
+					tree.add(folder);
+				}
+			}
+		}
+		return tree;
+	}
+
+	@Override
+	public void syncFolder(Qcdb db, int id) {
+		Project pro = projectMapper.selectByPrimaryKey(id);
+		String projectid = pro.getProjectid();
+		// 同步QC和CH库中指定文件夹下的用例名
+		List<Test> qclistTemp = Tool.getTestNameID(projectid, db);
+		List<Test> qclist = new ArrayList<Test>();
+		if (pro != null) {
+			List<Test> chlist = testMapper.selectByIds(pro.getId());
+			Map<Integer, Test> map = new HashMap<Integer, Test>();
+			Map<Integer, Test> chmap = new HashMap<Integer, Test>();
+			for (Test t : qclistTemp) {
+				Test qc = testMapper.selectByTidAndName(t.getTestname(), t.getTid());
+				if (qc != null) {
+					map.put(qc.getId(), qc);
+					qclist.add(qc);
+				}
+			}
+			for (Test t : chlist) {
+				chmap.put(t.getId(), t);
+			}
+			for (int i = 0; i < qclist.size(); i++) {
+				Test qc = qclist.get(i);
+				boolean syncflag = false;
+				Test c = new Test();
+				for (int j = 0; j < chlist.size(); j++) {
+					Test ch = chlist.get(j);
+					if (qc.getTestname().equals(ch.getTestname()) && qc.getTid().equals(ch.getTid())) {
+						map.remove(qc.getId());
+						chmap.remove(qc.getId());
+						break;
+					}
+					if (!qc.getTestname().equals(ch.getTestname()) && qc.getTid().equals(ch.getTid())) {
+						// 同步qc和ch库用例名
+						syncflag = true;
+						c = ch;
+						map.remove(qc.getId());
+						chmap.remove(qc.getId());
+						break;
+					}
+				}
+				if (syncflag) {
+					c.setTestname(qc.getTestname());
+					testMapper.updateByPrimaryKey(c);
+				}
+			}
+			// 删除ch库中与QC不存在的用例
+			for (int testID : map.keySet()) {
+				descriptionMapper.deleteByTestID(testID);
+				testMapper.deleteByPrimaryKey(testID);
+			}
+			for (int testID : chmap.keySet()) {
+				descriptionMapper.deleteByTestID(testID);
+				testMapper.deleteByPrimaryKey(testID);
+			}
+		}
+	}
+
+}

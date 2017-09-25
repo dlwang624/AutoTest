@@ -1,0 +1,96 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/common.css"/>
+<link rel="stylesheet" href="css/table.css"/>
+<title>自动化测试定期配置列表</title>
+<style type="text/css">
+input{
+	line-height: 25px;
+	padding:1px 2px;
+	width:100px;
+}
+</style>
+</head>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<body>
+<div class="main10">
+	<div class="clearfix">
+		<div class="fr"><input type="button" value="返回" id="back"></div>
+		<div class="fr"><input type="button" style="width:200px;" value="项目重新部署或重启后使用(暂用)" id="serverTimer"></div>
+	</div>
+	<c:if test="${list== null || fn:length(list) == 0}">
+			<div class="f18"><p style="font-weight: bold;">当前QC库还没有添加定期执行计划</p></div>
+	</c:if>
+	<c:if test="${list!= null && fn:length(list) > 0}">
+		<table class="formdata" id="steptable"> 
+		<caption>更新测试用例</caption> 
+			<tr>
+				<th scope="col">行号</th> 
+				<th scope="col">所属服务器IP</th> 
+				<th scope="col">配置备注</th> 
+				<th scope="col">新建时间</th>
+				<th scope="col">执行时间</th>
+				<th scope="col">操作</th> 
+			</tr>
+			<c:forEach items="${list }" varStatus="status" var="timer">
+				<tr>
+					<td scope="col">${status.index+1 }</td> 
+					<td scope="col">${ timer.ip}</td>
+					<td scope="col">${ timer.remark}</td>
+					<td scope="col"><fmt:formatDate value="${ timer.newdate}" pattern="yyyy-MM-dd hh:mm:ss"/> </td> 
+					<td scope="col">
+						<c:set value="${fn:split(timer.execdate,'@') }" var="dates" />
+						<c:forEach items="${ dates }" var="date" varStatus="status">
+							<c:if test="${status.index==0 }">
+								<c:choose>
+									<c:when test="${date == 1}">
+								      	周日
+								    </c:when>
+									<c:when test="${date == 2}">
+								      	周一
+								    </c:when>
+									<c:when test="${date == 3}">
+								      	周二
+								    </c:when>
+									<c:when test="${date == 4}">
+								      	周三
+								    </c:when>
+									<c:when test="${date == 5}">
+								      	周四
+								    </c:when>
+									<c:when test="${date == 6}">
+								      	周五
+								    </c:when>
+									<c:when test="${date == 7}">
+								      	周六
+								    </c:when>
+								    <c:otherwise>
+								       	<span class="fontred">非法数据</span>
+								    </c:otherwise>
+								</c:choose>
+							</c:if>
+							<c:if test="${status.index==1 }">
+								${ date}
+							</c:if>
+						</c:forEach>
+					</td>
+					<td scope="col">
+						<input type="button" value="查看" onclick="selTimer(${timer.id})">
+						<input type="button" value='<c:if test="${ timer.startflag }">停止</c:if><c:if test="${ !timer.startflag }">启动</c:if>' onclick="onTimerTest(${timer.id},this)">
+					</td> 
+				</tr>
+			</c:forEach>
+		</table>
+	</c:if>
+</div>
+<script type="text/javascript" src="js/timerConfigList.js"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/common.css"/>
+<link rel="stylesheet" href="css/table.css"/>
+<title>自动化测试用例执行</title>
+</head>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script type="text/javascript" src="js/jquery.tmpl.min.js"></script>
+<body>
+<div class="main12">
+	<div><input type="button" value="返回" class="backBtn" id="back"></div>
+	<input id="localAddress" type="text" value="${localAddress}" class="none"/>
+	<div>
+		<form id="updatetest">
+		<input type="text" name="value" value="${data.test.value }" class="none"/>
+		<input type="text" name="id" value="${data.test.id }" class="none"/>
+		<input type="text" name="createtime" value="${data.test.createtime }" class="none"/>
+		<input type="text" name="newuserid" value="${data.test.newuserid }" class="none"/>
+		<input type="text" name="updateuserid" value="${data.test.updateuserid }" class="none"/>
+		<input type="text" name="projectid" value="${data.test.projectid }" class="none"/>
+		<input type="text" name="reporturl" value="${data.test.reporturl }" class="none"/>
+		<input type="text" name="success" value="${data.test.success }" class="none"/>
+		<input type="text" name="fail" value="${data.test.fail }" class="none"/>
+		<input type="text" name="tid" value="${data.test.tid }" class="none"/>
+		<input type="text" name="flag" value="${data.test.flag }" class="none"/>
+		<table class="formdata" id="steptable"> 
+			<caption>更新测试用例</caption> 
+			<tr>
+				<th scope="col" colspan="3">用例名:</th> 
+				<td colspan="3"><input type="text" name="testname" readonly = "readonly" style="width:560px" value="${data.test.testname }" data-value="${data.test.testname }"/></td> 
+				<td colspan="2">
+<!-- 					<input type="button" value="删除空步骤" style="width: 100px;height: 30px" id="delNullStep"/> -->
+					<input type="button" value="保存用例" style="width: 150px;height: 30px" id="testsubmit"/>
+<!-- 					<select id="stepcount" style="width: 50px;height: 30px;margin:0px 3px;"> -->
+<!-- 						<option value="1">1</option> -->
+<!-- 						<option value="5">5</option> -->
+<!-- 						<option value="10">10</option> -->
+<!-- 						<option value="20">20</option> -->
+<!-- 						<option value="50">50</option> -->
+<!-- 					</select> -->
+<!-- 					<input type="button" value="添加步骤" id="addstep" style="width: 80px;height: 30px;"/> -->
+				</td>
+			</tr>
+			<tr> 
+<!-- 			<th scope="col">行号</th> -->
+			<th scope="col">步骤</th> 
+			<th scope="col">定位符类型</th> 
+			<th scope="col">定位符</th> 
+			<th scope="col">定位符描述</th> 
+			<th scope="col">预期定位符描述</th> 
+			<th scope="col">预期定位符类型</th> 
+			<th scope="col">预期定位符</th>
+<!-- 			<th scope="col">操作</th> -->
+			</tr> 
+			<c:forEach items="${data.descList }" varStatus="status" var="desc">
+				<tr id="row${status.index}"> 
+<!-- 				<th scope="row" class="outbg"> -->
+<%-- 					${status.index + 1} --%>
+<!-- 				</th>    -->
+				<td><input type="text" style="width:25px;text-align:center;" class="sync" readonly = "readonly" name="descList[${status.index}].step" value="${desc.step }" data-value="${desc.step }"/></td>
+				    <td>
+				    <div class="none"><input type="text" name="descList[${status.index}].id" value="${desc.id }" data-value="${ desc.id}" class="sync"/></div>
+					 <div class="none"><input type="text" name="descList[${status.index}].testid" value="${desc.testid}" data-value="${desc.testid }" class="sync"/></div>
+						<select name="descList[${status.index}].type" data-value="${desc.type }" class="sync">
+							<option value="xpath" <c:if test="${ desc.type=='xpath'}">selected="selected"</c:if>>xpath</option>
+							<option value="id" <c:if test="${ desc.type=='id'}">selected="selected"</c:if>>id</option>
+							<option value="linktext" <c:if test="${ desc.type=='linktext'}">selected="selected"</c:if>>linktext</option>
+							<option value="name" <c:if test="${ desc.type=='name'}">selected="selected"</c:if>>name</option>
+							<option value="partialLinkText" <c:if test="${ desc.type=='partialLinkText'}">selected="selected"</c:if>>partialLinkText</option>
+							<option value="classname" <c:if test="${ desc.type=='classname'}">selected="selected"</c:if>>classname</option>
+							<option value="css" <c:if test="${ desc.type=='css'}">selected="selected"</c:if>>css</option>
+							<option value="css" <c:if test="${ desc.type=='filepath'}">selected="selected"</c:if>>css</option>
+						</select>
+					</td> 
+				    <td><input type="text" class="sync" readonly = "readonly" name="descList[${status.index}].name" value="${desc.name }" data-value="${desc.name }"/></td> 
+				    <td><input type="text" class="sync" name="descList[${status.index}].description" style="width:200px" value="${desc.description }" data-value="${desc.description }"/></td> 
+				    <td><input type="text" class="sync" name="descList[${status.index}].resultdescription" style="width:200px" value="${desc.resultdescription }" data-value="${desc.resultdescription }"/></td> 
+					<td>
+						<select name="descList[${status.index}].resulttype" data-value="${ desc.resulttype}" class="sync">
+							<option value="" <c:if test="${ desc.resulttype==''}">selected="selected"</c:if>></option>
+							<option value="xpath" <c:if test="${ desc.resulttype=='xpath'}">selected="selected"</c:if>>xpath</option>
+							<option value="id" <c:if test="${ desc.resulttype=='id'}">selected="selected"</c:if>>id</option>
+							<option value="linktext" <c:if test="${ desc.resulttype=='linktext'}">selected="selected"</c:if>>linktext</option>
+							<option value="name" <c:if test="${ desc.resulttype=='name'}">selected="selected"</c:if>>name</option>
+							<option value="partialLinkText" <c:if test="${ desc.resulttype=='partialLinkText'}">selected="selected"</c:if>>partialLinkText</option>
+							<option value="classname" <c:if test="${ desc.resulttype=='classname'}">selected="selected"</c:if>>classname</option>
+							<option value="css" <c:if test="${ desc.resulttype=='css'}">selected="selected"</c:if>>css</option>
+							<option value="css" <c:if test="${ desc.resulttype=='filepath'}">selected="selected"</c:if>>css</option>
+						</select>
+					</td> 
+				    <td><input type="text" class="sync" readonly = "readonly" name="descList[${status.index}].resultname" value="${desc.resultname }" data-value="${desc.resultname }"/></td> 
+<!-- 				    <td> -->
+<%-- 				    	<input name="delstep" type="button" style="width:80px;height:30px" value="删除步骤" data-id="${desc.id }"/> --%>
+<!-- 				    	<input type="button" style="width:80px;height:30px" value="插入步骤" onclick="insertStep(this)"/> -->
+<!-- 				    </td>  -->
+				</tr> 
+			</c:forEach>
+		</table>
+		</form>
+	</div>
+</div>
+<!-- <script id="myTemplate" type="text/x-jquery-tmpl"> -->
+<!-- <tr id="row{{= num + 1}}">  -->
+<!-- <th scope="row" class="outbg">{{= num + 1}}</th> -->
+<!--     <td> -->
+<!--  		<div class="none"><input type="text" name="descList[{{= num}}].id" class="sync" value="-1"/></div> -->
+<!-- 		<select name="descList[{{= num}}].type" class="sync" data-value=""> -->
+<!-- 			<option value="xpath" selected="selected">xpath</option> -->
+<!-- 			<option value="id">id</option> -->
+<!-- 			<option value="linktext">linktext</option> -->
+<!-- 			<option value="name">name</option> -->
+<!-- 			<option value="partialLinkText">partialLinkText</option> -->
+<!-- 			<option value="classname">classname</option> -->
+<!-- 			<option value="css">css</option> -->
+<!-- 		</select> -->
+<!-- 	</td>  -->
+<!--     <td><input type="text" name="descList[{{= num}}].name" readonly = "readonly" data-value="" class="sync"/></td>  -->
+<!--     <td><input type="text" name="descList[{{= num}}].description" style="width:200px" data-value="" class="sync"/></td>  -->
+<!--     <td><input type="text" name="descList[{{= num}}].resultdescription" data-value="" style="width:200px" class="sync"/></td>  -->
+<!-- 	<td> -->
+<!-- 		<select name="descList[{{= num}}].resulttype" data-value="" class="sync"> -->
+<!-- 			<option value="" selected="selected"></option> -->
+<!-- 			<option value="xpath">xpath</option> -->
+<!-- 			<option value="id">id</option> -->
+<!-- 			<option value="linktext">linktext</option> -->
+<!-- 			<option value="name">name</option> -->
+<!-- 			<option value="partialLinkText">partialLinkText</option> -->
+<!-- 			<option value="classname">classname</option> -->
+<!-- 			<option value="css">css</option> -->
+<!-- 		</select> -->
+<!-- 	</td>  -->
+<!--     <td><input type="text" name="descList[{{= num}}].resultname" readonly = "readonly" data-value="" class="sync"/></td>  -->
+<!-- </tr> -->
+<!-- </script> -->
+<script type="text/javascript" src="js/updateTestPage.js"></script>
+<script type="text/javascript" src="js/uPageSocket.js"></script>
+</body>
+</html>

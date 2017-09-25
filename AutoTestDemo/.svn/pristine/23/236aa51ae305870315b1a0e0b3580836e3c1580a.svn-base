@@ -1,0 +1,408 @@
+package com.framework;
+
+import java.io.File;
+import java.util.regex.Pattern;
+
+import org.apache.log4j.Logger;
+import org.czy.entity.Qcdb;
+import org.czy.service.RunTestService;
+import org.czy.util.Final;
+import org.czy.util.SpringTool;
+import org.czy.websocket.WebsocketHandler;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.Select;
+import org.testng.ITestResult;
+import org.testng.Reporter;
+import org.openqa.selenium.ElementNotVisibleException;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.NoSuchFrameException;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+
+import com.check.CheckElement;
+import com.test.RunTest;
+
+public class NewImpAction implements NewAction {
+
+	private final static Logger LOG = Logger.getLogger(NewImpAction.class);
+
+	private static final String ESCAPE_PROPERTY = "org.uncommons.reportng.escape-output";
+
+	private static int imgindex = 1;
+
+	public static String errorlog;
+
+	public static boolean flag;
+
+	private static WebDriver driver;
+
+	public static WebDriver getDriver() {
+		return driver;
+	}
+
+	public static int SleepCount = 10;
+
+	public NewImpAction() {
+	}
+
+	// public NewImpAction(WebDriver driver) {
+	// this.driver = driver;
+	// }
+
+	public void navigate(String url, String ip) {
+		// String regex =
+		// "^(http|https|www|ftp|)?(://)?(\\w+(-\\w+)*)(\\.(\\w+(-\\w+)*))*((:\\d+)?)(/(\\w+(-\\w+)*))*(\\.?(\\w)*)(\\?)?(((\\w*%)*(\\w*\\?)*(\\w*:)*(\\w*\\+)*(\\w*\\.)*(\\w*&)*(\\w*-)*(\\w*=)*(\\w*%)*(\\w*\\?)*(\\w*:)*(\\w*\\+)*(\\w*\\.)*(\\w*&)*(\\w*-)*(\\w*=)*)*(\\w*)*)(/)*$";
+		String regex = "[a-zA-z]+://[^\\s]*";
+
+		if (url.equals("")) {
+			LOG.info("ip:" + ip + ";访问url不能为空");
+			Reporter.log("访问url不能为空");
+			throw new NullPointerException();
+		}
+		if (!Pattern.matches(regex, url)) {
+			LOG.info("ip:" + ip + ";访问url:[" + url + "]格式不正确");
+			Reporter.log("访问url:[" + url + "]格式不正确");
+			throw new IllegalArgumentException();
+		}
+		driver = NewUITestPC.init(ip);
+		driver.navigate().to(url);
+		driver.manage().window().maximize();
+		System.out.println("成功打开:" + url);
+	}
+
+	public void phantom(String url, String ip) {
+		String regex = "[a-zA-z]+://[^\\s]*";
+		if (url.equals("")) {
+			LOG.info("ip:" + ip + ";访问url不能为空");
+			Reporter.log("访问url不能为空");
+			throw new NullPointerException();
+		}
+		if (!Pattern.matches(regex, url)) {
+			LOG.info("ip:" + ip + ";访问url:[" + url + "]格式不正确");
+			Reporter.log("访问url:[" + url + "]格式不正确");
+			throw new IllegalArgumentException();
+		}
+		driver = NewUITestPC.getDriver();
+		driver.navigate().to(url);
+		driver.manage().window().maximize();
+		System.out.println("成功打开:" + url);
+	}
+
+	@Override
+	public String mainAction(MainAction action, Qcdb db) {
+		WebElement element = null;
+		String msg = "";
+		if (!action.getFlag().equals(Final.ACTION1) && !action.getFlag().equals(Final.ACTION2)
+				&& !action.getFlag().equals(Final.ACTION3) && !action.getFlag().equals(Final.ACTION4)) {
+			element = getElement(action.getType(), action.getPath());
+			if (element == null) {
+				RunTest.successFlag = false;
+				WebsocketHandler.sendMessageToUser(RunTest.uid, "@@@" + RunTest.logCon + "发生错误,没有找到操作元素");
+				Reporter.log("@@@" + RunTest.logCon + "发生错误,没有找到操作元素");
+			}
+		}
+		// WebElement resultEle = null;
+		// if( null != action.getResultDescContent()){
+		// resultEle =
+		// getElement(action.getResultType(),action.getResultpath(),action.getIframeName());
+		// if(resultEle==null){
+		// RunTest.successFlag = false;
+		// WebsocketHandler.sendMessageToUser(RunTest.uid, "@@@" +RunTest.logCon
+		// + "发生错误,没有找到操作元素");
+		// }
+		// }
+
+		flag = RunTest.browserFlag;
+		// flag = 1;
+		switch (action.getFlag()) {
+		case "打开":
+			try {
+				if (flag) {
+					if(null!=action.getPath()&&!action.getPath().equals("")){
+						navigate(action.getPath(), action.getIp());
+					}else{
+						navigate(action.getContent(), action.getIp());
+					}
+				} else {
+					if(null!=action.getPath()&&!action.getPath().equals("")){
+						phantom(action.getPath(), action.getIp());
+					}else{
+						phantom(action.getContent(), action.getIp());
+					}
+				}
+				msg = CheckElement.isElementExist(action, element, db);
+			} catch (NoSuchElementException | NoSuchFrameException | ElementNotVisibleException e) {
+				errorlog = e.toString();
+			}
+			break;
+		case "输入":
+
+			element.sendKeys(action.getContent());
+			msg = CheckElement.isElementExist(action, element, db);
+			break;
+		case "点击":
+			if (!RunTest.successFlag && RunTest.inOutFlag) {
+				WebsocketHandler.sendMessageToUser(RunTest.uid,
+						"-----------------公共用例[" + action.getTestName() + "]测试结束------------------");
+				Reporter.log("-----------------公共用例[" + action.getTestName() + "]测试结束------------------");
+				if (RunTest.datanum == -1) {
+					WebsocketHandler.sendMessageToUser(RunTest.uid,
+							"-----------------------第[" + RunTest.num + "]次执行用例结束-----------------------");
+					Reporter.log("-----------------------第[" + RunTest.num + "]次执行用例结束-----------------------");
+				} else {
+					WebsocketHandler.sendMessageToUser(RunTest.uid, "-----------------------第[" + RunTest.num + "]次第["
+							+ (RunTest.datanum + 1) + "]套数据执行用例结束-----------------------");
+					Reporter.log("-----------------------第[" + RunTest.num + "]次第[" + (RunTest.datanum + 1)
+							+ "]套数据执行用例结束-----------------------");
+				}
+			} else if (!RunTest.successFlag) {
+				if (RunTest.datanum == -1) {
+					WebsocketHandler.sendMessageToUser(RunTest.uid,
+							"-----------------------第[" + RunTest.num + "]次执行用例结束-----------------------");
+					Reporter.log("-----------------------第[" + RunTest.num + "]次执行用例结束-----------------------");
+				} else {
+					WebsocketHandler.sendMessageToUser(RunTest.uid, "-----------------------第[" + RunTest.num + "]次第["
+							+ (RunTest.datanum + 1) + "]套数据执行用例结束-----------------------");
+					Reporter.log("-----------------------第[" + RunTest.num + "]次第[" + (RunTest.datanum + 1)
+							+ "]套数据执行用例结束-----------------------");
+				}
+			}
+			try {
+				element.click();
+				msg = CheckElement.isElementExist(action, element, db);
+			} catch (NoSuchElementException | NoSuchFrameException | ElementNotVisibleException e) {
+				errorlog = e.toString();
+			}
+			break;
+		case "清空":
+			try {
+				element.clear();
+				msg = CheckElement.isElementExist(action, element, db);
+			} catch (NoSuchElementException | NoSuchFrameException | ElementNotVisibleException e) {
+				errorlog = e.toString();
+			}
+			break;
+		case "选择":
+			if (!RunTest.successFlag && RunTest.inOutFlag) {
+				WebsocketHandler.sendMessageToUser(RunTest.uid,
+						"-----------------公共用例[" + action.getTestName() + "]测试结束------------------");
+				Reporter.log("-----------------公共用例[" + action.getTestName() + "]测试结束------------------");
+				if (RunTest.datanum == -1) {
+					WebsocketHandler.sendMessageToUser(RunTest.uid,
+							"-----------------------第[" + RunTest.num + "]次执行用例结束-----------------------");
+					Reporter.log("-----------------------第[" + RunTest.num + "]次执行用例结束-----------------------");
+				} else {
+					WebsocketHandler.sendMessageToUser(RunTest.uid, "-----------------------第[" + RunTest.num + "]次第["
+							+ (RunTest.datanum + 1) + "]套数据执行用例结束-----------------------");
+					Reporter.log("-----------------------第[" + RunTest.num + "]次第[" + (RunTest.datanum + 1)
+							+ "]套数据执行用例结束-----------------------");
+				}
+			} else if (!RunTest.successFlag) {
+				if (RunTest.datanum == -1) {
+					WebsocketHandler.sendMessageToUser(RunTest.uid,
+							"-----------------------第[" + RunTest.num + "]次执行用例结束-----------------------");
+					Reporter.log("-----------------------第[" + RunTest.num + "]次执行用例结束-----------------------");
+				} else {
+					WebsocketHandler.sendMessageToUser(RunTest.uid, "-----------------------第[" + RunTest.num + "]次第["
+							+ (RunTest.datanum + 1) + "]套数据执行用例结束-----------------------");
+					Reporter.log("-----------------------第[" + RunTest.num + "]次第[" + (RunTest.datanum + 1)
+							+ "]套数据执行用例结束-----------------------");
+				}
+			}
+			try {
+				Select select = new Select(element);
+				select.selectByValue(action.getContent());
+				msg = CheckElement.isElementExist(action, element, db);
+			} catch (NoSuchElementException | NoSuchFrameException | ElementNotVisibleException e) {
+				errorlog = e.toString();
+			}
+			break;
+		case "右击":
+			try {
+				Actions actions = new Actions(driver);
+				actions.contextClick(element).perform();
+			} catch (NoSuchElementException | NoSuchFrameException | ElementNotVisibleException e) {
+				errorlog = e.toString();
+			}
+			break;
+		case "回车":
+			try {
+				Actions actions = new Actions(driver);
+				actions.sendKeys(Keys.ENTER);
+			} catch (NoSuchElementException | NoSuchFrameException | ElementNotVisibleException e) {
+				errorlog = e.toString();
+			}
+			break;
+		case "前提":
+			RunTestService runTestService = (RunTestService) SpringTool.getBean("runTestService");
+			runTestService.shareTestRun(action, db);
+			break;
+		case "悬停":
+			Actions actions = new Actions(driver);
+			actions.moveToElement(element);
+			// actions.click().perform();
+			msg = CheckElement.isElementExist(action, element, db);
+			break;
+		case "切换":
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				LOG.error("iframe切换等待时发生异常");
+				e1.printStackTrace();
+			}
+			try {
+				if (action.getIframeName() == "default") {
+					driver.switchTo().defaultContent();
+				} else {
+					driver.switchTo().frame(action.getIframeName());
+				}
+				break;
+			} catch (Exception e) {
+				LOG.info("用例名:[" + action.getTestName() + "]通过iframeName查找iframe失败.");
+			}
+			// 通过xpath查找iframe
+			WebElement iframe = driver.findElement(By.xpath(action.getPath()));
+			driver.switchTo().frame(iframe);
+			break;
+		default:
+			break;
+		}
+		return msg;
+	}
+
+	public static void phantomshot(String status, int setpnum) {
+		TakesScreenshot shot = ((TakesScreenshot) driver);
+		File srcFile = shot.getScreenshotAs(OutputType.FILE);
+
+		if (status.contains("成功完成")) {
+
+			String path = RunTest.filepath + "/successimgs";
+			File file = new File(path);
+			if (!file.exists() && !file.isDirectory()) {
+				file.mkdirs();
+			}
+
+			for (int i = 1; i <= setpnum; i++) {
+				srcFile.renameTo(new File(path + "/" + "步骤 " + i + ".jpg"));
+
+			}
+			Reporter.log("<img src='../successimgs/" + "步骤 " + setpnum + ".jpg' height='200' width='200'/>");
+		}
+	}
+
+	public static void takeScreenShot(ITestResult tr) {
+
+		System.setProperty(ESCAPE_PROPERTY, "false");
+		TakesScreenshot shot = ((TakesScreenshot) driver);
+		File srcFile = shot.getScreenshotAs(OutputType.FILE);
+
+		String path = RunTest.filepath + "/html/imgs";
+		File file = new File(path);
+		if (!file.exists() && !file.isDirectory()) {
+			file.mkdirs();
+		}
+		String imgname = "test" + imgindex + ".jpg";
+		String img = "test" + imgindex;
+		srcFile.renameTo(new File(path + "/" + imgname));
+		Reporter.log(
+				// "<div style='position:relative'>"
+				// + "<div><img src='./imgs/"+imgname+"' height='150'
+				// width='250' onmouseout='showIMG("+img+")'
+				// onmouseover='hideIMG("+img+")'/></div>"
+				// + "<div
+				// style='width:800px;height:550px;position:absolute;margin-left:-800px;margin-top:-550px;display:none;'
+				// id="+img+"><img src='./imgs/"+imgname+"' height='550'
+				// width='800' /></div>"
+				// + "</div>"
+				// + "<script type='text/javascript'>"
+				// + "function showIMG(id){"
+				// + "document.getElementById(id).style.display='none';"
+				// + "}"
+				// + "function hideIMG(id){"
+				// + "document.getElementById(id).style.display='block';"
+				// + "}"
+				// + "</script>"
+				"<img src='./imgs/" + imgname + "'  height='150' width='250' onclick=\"javascript:window.open('./imgs/"
+						+ imgname + "')\"/>");
+		++imgindex;
+	}
+
+	private WebElement getElement(String type, String path) {
+		WebElement ele = null;
+		for (int i = 0; i < SleepCount; i++) {
+			try {
+				Thread.sleep(1000);
+				ele = driver.findElement(switchType(type, path));
+			} catch (Exception e) {
+				LOG.error(e);
+				continue;
+			}
+			if (null != ele) {
+				break;
+			}
+			continue;
+		}
+		return ele;
+	}
+
+	private By switchType(String type, String path) {
+		By by = null;
+		switch (type) {
+		case "xpath":
+			by = By.xpath(path);
+			break;
+		case "id":
+			by = By.id(path);
+			break;
+		case "linktext":
+			by = By.linkText(path);
+			break;
+		case "name":
+			by = By.name(path);
+			break;
+		case "partialLinkText":
+			by = By.partialLinkText(path);
+			break;
+		case "classname":
+			by = By.className(path);
+			break;
+		case "css":
+			by = By.cssSelector(path);
+			break;
+		default:
+			by = By.xpath(path);
+			break;
+		}
+		return by;
+	}
+
+	public WebDriver getdefaultContent() {
+
+		driver.switchTo().defaultContent();
+
+		return driver;
+	}
+
+	@Override
+	public WebDriver getswitchTo(String iframe) {
+
+		driver.switchTo().frame(iframe);
+
+		return driver;
+	}
+
+	public void delCookie() {
+		driver.manage().deleteAllCookies();
+	}
+
+	@Override
+	public void quit() {
+		driver.quit();
+	}
+
+}

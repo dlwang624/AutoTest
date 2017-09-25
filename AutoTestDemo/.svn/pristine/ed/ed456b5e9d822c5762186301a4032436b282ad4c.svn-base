@@ -1,0 +1,179 @@
+function excelDownload(filename){
+ 	var testID = $("#testID").val();
+ 	window.location.href="file/getFile.htm?fileName="+filename+"&&id="+testID;
+}
+//预想结果li点击事件
+function expectItemClick(li){
+   var testID = $(li).attr("value");
+	$("#testID").val(testID);
+	$("#testName").val($(li).html());
+	$(".expect").hide();
+	$.ajax({
+		type: 'GET',
+		  url: "file/folderNames.htm?id="+testID,
+		  dataType: "json",
+		  success: function(data){
+			 $("#excelDownload").html("");
+			 if(data.list.length!=0){
+				 $('#excelTemplate').tmpl(data.list).appendTo('#excelDownload');
+			 }else{
+				 $("#excelDownload").html("<h1>此用例没有数据文件</h1>");
+			 }
+		  },
+		  error: function (xhr, status, text) {
+	          switch (status) {
+	             case 404:
+	                 console.log("File not found");
+	                 break;
+	             case 500:
+	                 console.log("Server error");
+	                 break;
+	             case 0:
+	                 console.log("Request aborted");
+	                 break;
+	             default:
+	            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+	            	 		+ "readyState: " + xhr.readyState + "\n"
+	            	 		+ "responseText: "+ xhr.responseText + "\n"
+	            	 		+ "status: " + xhr.status + "\n"
+	            	 console.log(msg);
+	            }
+	        }
+	});
+}
+
+function exceldel(tName,_this){
+	var testID = $("#testID").val();
+	$.ajax({
+		  type: 'POST',
+		  url: "file/delFile.htm",
+		  data:{"fileName":tName,"id":testID},
+		  dataType: "json",
+		  success: function(data){
+			  if(data.flag==true){
+				  alert("删除成功");
+				  $(_this).parent().parent().remove();
+				  var count = $("div[name='delete']").length;
+				  if(count==0){
+					  $("#excelDownload").html("<h1>此用例没有数据文件</h1>");
+				  }
+			  }else{
+				  alert("删除失败"); 
+			  }
+			  
+		  },
+		  error: function (xhr, status, text) {
+	          switch (status) {
+	             case 404:
+	                 console.log("File not found");
+	                 break;
+	             case 500:
+	                 console.log("Server error");
+	                 break;
+	             case 0:
+	                 console.log("Request aborted");
+	                 break;
+	             default:
+	            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+	            	 		+ "readyState: " + xhr.readyState + "\n"
+	            	 		+ "responseText: "+ xhr.responseText + "\n"
+	            	 		+ "status: " + xhr.status + "\n"
+	            	 console.log(msg);
+	            }
+	        }
+		});
+}
+
+$(function(){
+	var msg = $("#msg").val();
+	if(msg!=""){
+		alert(msg);
+	}
+	$("#uploadFile").click(function(){
+		var proid = $("#projectid").val();
+		var testID = $("#testID").val();
+		var testName = $("#testName").val();
+		var filename = $("#filename").val();
+		if("请选择文件夹名"==proid){
+			alert("请选择文件夹名");
+			return false;
+		}
+		if(""==testID||""==testName){
+			alert("请选择用例名");
+			return false;
+		}
+		if(""==filename){
+			alert("请选择上传数据文件");
+			return false;
+		}
+		$("#filedata").submit();
+	});
+	
+	$("#projectid").change(function(){
+		if($(this).val()=="请选择文件夹名"){
+			$("#fileshowmsg").show();
+			return;
+		}else{
+			if($("#fileshowmsg").css("display")=="block")
+				$("#fileshowmsg").hide();
+		}
+		$("#testName").val("");
+		$("#expect").html("");
+		$(".expect").hide();
+	});
+	
+	//返回事件
+	$("#back").click(function(){
+		window.location.href="project/main.htm";
+	});
+	$("#testName").keyup(function(){
+		var proid = $("#projectid").val();
+		if(proid=="请选择文件夹名"){
+			$("#fileshowmsg").show();
+			return;
+		}else{
+			if($("#fileshowmsg").css("display")=="block")
+				$("#fileshowmsg").hide();
+		}
+		var flag = $(".expect").is(':hidden');
+		if(flag){
+			$(".expect").show();
+		}
+		var tName = $(this).val();
+		if(tName==""){
+			$("#expect").html("");
+			$(".expect").hide();
+		}
+		if(tName.replace(/\s+/g, "").length!=0){
+			$.ajax({
+			  type: 'POST',
+			  url: "CMS/expectTest.htm",
+			  data:{"tName":tName,"proid":proid},
+			  dataType: "json",
+			  success: function(data){
+				  $("#expect").html("");
+				  $('#expectTemplate').tmpl(data.tests).appendTo('#expect');
+			  },
+			  error: function (xhr, status, text) {
+		          switch (status) {
+		             case 404:
+		                 console.log("File not found");
+		                 break;
+		             case 500:
+		                 console.log("Server error");
+		                 break;
+		             case 0:
+		                 console.log("Request aborted");
+		                 break;
+		             default:
+		            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+		            	 		+ "readyState: " + xhr.readyState + "\n"
+		            	 		+ "responseText: "+ xhr.responseText + "\n"
+		            	 		+ "status: " + xhr.status + "\n"
+		            	 console.log(msg);
+		            }
+		        }
+			});
+		}
+	});
+});

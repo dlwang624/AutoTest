@@ -1,0 +1,82 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta http-equiv="Expires" CONTENT="0"> 
+<meta http-equiv="Cache-Control" CONTENT="no-cache"> 
+<meta http-equiv="Pragma" CONTENT="no-cache"> 
+<link rel="stylesheet" href="css/style.css"/>
+<link rel="stylesheet" href="assets/vendor/font-awesome/css/font-awesome.min.css">
+<link rel="stylesheet" href="assets/vendor/linearicons/style.css">
+<link rel="stylesheet" href="assets/vendor/chartist/css/chartist-custom.css">
+<link rel="stylesheet" href="js/themes/default/easyui.css"/>
+<link rel="stylesheet" href="js/themes/icon.css"/>
+<!-- MAIN CSS -->
+<title>自动化测试登录</title>
+<style type="text/css">
+#back:hover{
+	color:#666;
+}
+#back{
+	height: 30px;
+	width: 30px;
+	font-size: 30px;
+	color: #999;
+	cursor:pointer;
+}
+</style>
+</head>
+<body class="login">
+<section>
+	<input type="text" value="${ msg}" id="msg" class="none">
+	<div style="width: 100%;text-align: left;"><span id="back" class="fa fa-arrow-circle-left"></span></div>
+	<h1><strong>密码</strong>找回</h1>
+	<form action="user/findpass.htm" method="post">
+		<input name="uname" type="text" placeholder="请输入用户名"/>
+		<input name="email" type="text" placeholder="请输入邮箱地址"/>   
+		<button class="blue">提交</button>
+	</form>
+</section>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script src="js/layer/layer.js"></script>
+<script type="text/javascript">
+$(function(){
+	var msg = $("#msg").val();
+	if(msg!=""&&undefined!=msg){
+		if(msg=="找回成功,密码已发送至您的邮箱"){
+			layer.alert(msg, {
+	            icon: 1,
+	        });
+		}else{
+			layer.alert(msg, {
+	            icon: 2,
+	        });
+		}
+	}
+	$("#back").click(function(){
+		window.location.href="user/index.htm";		
+	});
+	$("button[class='blue']").click(function(){
+		var name = $("input[name='uname']").val();
+		var email = $("input[name='email']").val();
+		if((name==""&&email=="")||(name==undefined && email==undefined)){
+			layer.alert('用户名和邮箱地址不能为空!');
+			return false;
+		}
+		if(name==""||name==undefined){
+			layer.tips('用户名不能为空!', $("input[name='uname']"),{tips:[2,'#C00']});
+			return false;
+		}
+		if(email==""||email==undefined){
+			layer.tips('邮箱地址不能为空!', $("input[name='email']"),{tips:[2,'#C00']});
+			return false;
+		}
+	});
+});
+</script>
+</body>
+</html>

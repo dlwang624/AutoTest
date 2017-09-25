@@ -1,0 +1,323 @@
+package com.utils.tools;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+import org.czy.entity.Qcdb;
+import org.czy.entity.TestSumReport;
+
+import com.utils.db.DB2Factory;
+
+public class TestReportdbTools {
+
+	private static Map<Integer, List<List<String>>> map = new HashMap<Integer, List<List<String>>>();
+
+	public static String getTableData(String folderName, Qcdb db) {
+		List<List<String>> rows = new ArrayList<List<String>>();
+		Connection conn;
+		String result = "";
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT e.n4,e.n1,e.n2,f.RN_RUN_NAME FROM (SELECT t.TS_NAME  AS n1,t.TS_STEPS AS n2,c.CYID AS n3,c.CY AS n4,T.TS_TEST_ID AS n5 FROM aviation_hcc_db0.td.TEST T, aviation_hcc_db0.td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM aviation_hcc_db0.td.CYCL_FOLD a,aviation_hcc_db0.td.CYCLE b WHERE a.CF_ITEM_ID =(select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID)e,aviation_hcc_db0.td.RUN f WHERE e.n3=f.RN_CYCLE_ID and e.n5 = f.RN_TEST_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+			while (rs.next()) {
+				List<String> cols = new ArrayList<String>();
+				cols.add(rs.getString("n4"));
+				cols.add(rs.getString("n1"));
+				cols.add(rs.getString("n2"));
+				cols.add(rs.getString("RN_RUN_NAME"));
+				rows.add(cols);
+			}
+			map.put(1, rows);
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+
+	// 遗留缺陷详情
+	public static String getPostpondBug(String folderName, Qcdb db) {
+		List<List<String>> rows = new ArrayList<List<String>>();
+		Connection conn;
+		String result = "";
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT  B.BG_BUG_ID,B.BG_SUMMARY,B.BG_SEVERITY FROM aviation_hcc_db0.td.LINK L,aviation_hcc_db0.td.BUG B WHERE L.LN_ENTITY_TYPE = 'STEP' AND L.LN_ENTITY_ID IN(SELECT T.ST_ID FROM aviation_hcc_db0.td.STEP T WHERE T.ST_RUN_ID=(select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "')AND T.ST_STATUS = 'failed') AND L.LN_BUG_ID=B.BG_BUG_ID AND B.BG_STATUS='Postpond'";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+			while (rs.next()) {
+				List<String> cols = new ArrayList<String>();
+				cols.add(rs.getString("BG_BUG_ID"));
+				cols.add(rs.getString("BG_SUMMARY"));
+				cols.add(rs.getString("BG_SEVERITY"));
+				rows.add(cols);
+			}
+			map.put(1, rows);
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+			Tool.stringMultiValueMap.clear();
+			Tool.result = null;
+		}
+		return result;
+	}
+
+	// Bug总数
+	public static TestSumReport getButCount(String folderName, Qcdb db) {
+		Connection conn;
+		TestSumReport ts = new TestSumReport();
+		int sum = 0;
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT  COUNT(*) FROM aviation_hcc_db0.td.LINK L,aviation_hcc_db0.td.BUG B WHERE L.LN_ENTITY_TYPE = 'STEP' AND L.LN_ENTITY_ID IN (SELECT T.ST_ID FROM aviation_hcc_db0.td.STEP T WHERE T.ST_RUN_ID=(select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName + "') AND T.ST_STATUS = 'failed') AND L.LN_BUG_ID=B.BG_BUG_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				sum = rs.getInt(1);
+			}
+			ts.setFailCount(sum);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	// 遗留缺陷总数
+	public static TestSumReport getPostpondBugCount(String folderName, Qcdb db) {
+		Connection conn;
+		int sum = 0;
+		TestSumReport ts = new TestSumReport();
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT  COUNT(*) FROM aviation_hcc_db0.td.LINK L,aviation_hcc_db0.td.BUG B WHERE L.LN_ENTITY_TYPE = 'STEP' AND L.LN_ENTITY_ID IN (SELECT T.ST_ID FROM aviation_hcc_db0.td.STEP T WHERE T.ST_RUN_ID=(select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND T.ST_STATUS = 'failed') AND L.LN_BUG_ID=B.BG_BUG_ID AND B.BG_STATUS='Postpond'";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				sum = rs.getInt(1);
+			}
+
+			ts.setFailLeaveOut(sum);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	// 缺陷解决率
+
+	public static TestSumReport getBugResultRate() {
+
+		TestSumReport ts = new TestSumReport();
+		int failcount = ts.getFailCount();
+		int failleave = ts.getFailLeaveOut();
+		float rate = failleave / failcount;
+		ts.setFailRate(rate);
+
+		return ts;
+
+	}
+
+	// 缺陷严重等级占比
+	public static TestSumReport getBugSeverity(String folderName, Qcdb db) {
+		Connection conn;
+		int countnum = 0;
+		int low = 0, medium = 0, high = 0, veryHigh = 0, urgent = 0;
+		TestSumReport ts = new TestSumReport();
+		List<String> list = new ArrayList<String>();
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT  B.BG_SEVERITY FROM aviation_hcc_db0.td.LINK L,aviation_hcc_db0.td.BUG B WHERE L.LN_ENTITY_TYPE = 'STEP' AND L.LN_ENTITY_ID IN (SELECT T.ST_ID FROM aviation_hcc_db0.td.STEP T WHERE T.ST_RUN_ID=(select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName + "') AND T.ST_STATUS = 'failed') AND L.LN_BUG_ID=B.BG_BUG_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+
+				list.add("BG_SEVERITY");
+			}
+
+			for (int j = 0; j < list.size(); j++) {
+				if ((list.get(j).toString()).contains("1-Low")) {
+					low++;
+				} else if ((list.get(j).toString()).contains("2-Medium")) {
+					medium++;
+				} else if ((list.get(j).toString()).contains("3-High")) {
+					high++;
+				} else if ((list.get(j).toString()).contains("4-Very High")) {
+					veryHigh++;
+				} else {
+					urgent++;
+				}
+
+			}
+
+			float rate = urgent + veryHigh + high / list.size();
+			ts.setUrgent(urgent);
+			ts.setVeryHigh(veryHigh);
+			ts.setHigh(high);
+			ts.setMedium(medium);
+			ts.setLow(low);
+			ts.setRate(rate);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	// 测试覆盖
+	public static TestSumReport gettouchStepNum(String folderName, Qcdb db) {
+		Connection conn;
+		int sum = 0;
+		TestSumReport ts = new TestSumReport();
+		List<String> list = new ArrayList<String>();
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT e.n2 FROM (SELECT t.TS_NAME  AS n1,t.TS_STEPS AS n2,c.CYID AS n3,c.CY AS n4,T.TS_TEST_ID AS n5 FROM aviation_hcc_db0.td.TEST T, aviation_hcc_db0.td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM aviation_hcc_db0.td.CYCL_FOLD a,aviation_hcc_db0.td.CYCLE b WHERE a.CF_ITEM_ID =(select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID)e,aviation_hcc_db0.td.RUN f WHERE e.n3=f.RN_CYCLE_ID and e.n5 = f.RN_TEST_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				list.add(rs.getString("n2"));
+			}
+
+			for (String string : list) {
+				sum += Integer.parseInt(string);
+			}
+
+			ts.setTouchStepNum(sum);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	public static TestSumReport getexecStepNum(String folderName, Qcdb db) {
+		Connection conn;
+		TestSumReport ts = new TestSumReport();
+		List<String> list = new ArrayList<String>();
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT f.RN_RUN_NAME FROM (SELECT t.TS_NAME  AS n1,t.TS_STEPS AS n2,c.CYID AS n3,c.CY AS n4,T.TS_TEST_ID AS n5 FROM aviation_hcc_db0.td.TEST T, aviation_hcc_db0.td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM aviation_hcc_db0.td.CYCL_FOLD a,aviation_hcc_db0.td.CYCLE b WHERE a.CF_ITEM_ID =(select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID)e,aviation_hcc_db0.td.RUN f WHERE e.n3=f.RN_CYCLE_ID and e.n5 = f.RN_TEST_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				list.add(rs.getString("RN_RUN_NAME"));
+			}
+
+			ts.setExecStepNum(list.size());
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	public static TestSumReport getexecTestCount(String folderName, Qcdb db) {
+		Connection conn;
+		TestSumReport ts = new TestSumReport();
+		List<String> list = new ArrayList<String>();
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT e.n1 FROM (SELECT t.TS_NAME  AS n1,t.TS_STEPS AS n2,c.CYID AS n3,c.CY AS n4,T.TS_TEST_ID AS n5 FROM aviation_hcc_db0.td.TEST T, aviation_hcc_db0.td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM aviation_hcc_db0.td.CYCL_FOLD a,aviation_hcc_db0.td.CYCLE b WHERE a.CF_ITEM_ID =(select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID)e,aviation_hcc_db0.td.RUN f WHERE e.n3=f.RN_CYCLE_ID and e.n5 = f.RN_TEST_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				list.add(rs.getString("n1"));
+			}
+
+			for (int i = 0; i < list.size() - 1; i++) {
+				for (int j = list.size() - 1; j > i; j--) {
+					if (list.get(j).equals(list.get(i))) {
+						list.remove(j);
+					}
+				}
+			}
+
+			ts.setExecTestCount(list.size());
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	public static TestSumReport getsuccessRate(String folderName, Qcdb db) {
+		Connection conn;
+		int passnum=0;
+		TestSumReport ts = new TestSumReport();
+		List<String> list = new ArrayList<String>();
+		MultiValueMap<String, String> list2 = new LinkedMultiValueMap<>();
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT t.TS_NAME,t.TS_CREATION_DATE,T.TS_EXEC_STATUS FROM aviation_hcc_db0.td.TEST T, aviation_hcc_db0.td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM aviation_hcc_db0.td.CYCL_FOLD a,aviation_hcc_db0.td.CYCLE b WHERE a.CF_ITEM_ID = (select a.CF_ITEM_ID from aviation_hcc_db0.td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				list.add(rs.getString("TS_EXEC_STATUS"));
+			}
+				for (int i = 0; i < list.size(); i++) {
+					String TS_EXEC_STATUS = list.get(i).toString();
+					if(TS_EXEC_STATUS.equals("Passed")){
+						passnum++;
+						
+					}
+				}
+			int sum =list.size();
+			System.out.println(sum);
+			float rate = passnum/ sum;
+			ts.setSuccessRate(rate);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+
+}

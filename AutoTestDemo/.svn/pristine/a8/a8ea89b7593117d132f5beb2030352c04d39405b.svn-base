@@ -1,0 +1,43 @@
+package org.czy.service.impl;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.czy.dao.UserMapper;
+import org.czy.entity.User;
+import org.czy.service.UserService;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserServiceImpl implements UserService {
+	
+	@Resource
+	private UserMapper userMapper;
+
+	
+	@Override
+	public User userLogin(String name, String password) {
+		return userMapper.selectByNameAndPass(name, password);
+	}
+
+
+	@Override
+	public List<Map<String,String>> LikeMail(String mail) {
+		List<User> list = userMapper.selectLikeMail(mail);
+		List<Map<String,String>> mails = null;
+		if(null!=list){
+			mails = new ArrayList<Map<String,String>>();
+			for (User user : list) {
+				Map<String, String> map = new HashMap<String,String>();
+				map.put("mail",user.getEmail());
+				mails.add(map);
+			}
+		}
+		return mails;
+	}
+
+}

@@ -1,0 +1,10 @@
+package org.czy.service;
+
+import java.util.List;
+
+import org.czy.entity.Authority;
+
+public interface AuthorityService {
+
+	List<Authority> selectByIDs(int uid);
+}

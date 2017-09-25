@@ -1,0 +1,1054 @@
+package org.czy.service.impl;
+
+import java.io.IOException;
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.apache.log4j.Logger;
+import org.czy.dao.DescriptionMapper;
+import org.czy.dao.ProjectMapper;
+import org.czy.dao.QcdbMapper;
+import org.czy.dao.TestMapper;
+import org.czy.dao.UserMapper;
+import org.czy.entity.Description;
+import org.czy.entity.MainTestInfo;
+import org.czy.entity.Project;
+import org.czy.entity.Qcdb;
+import org.czy.entity.SyncTest;
+import org.czy.entity.Test;
+import org.czy.entity.TestCopyModel;
+import org.czy.entity.TestCount;
+import org.czy.entity.TestList;
+import org.czy.entity.TreeFolder;
+import org.czy.entity.TreeTest;
+import org.czy.entity.User;
+import org.czy.entity.UserCount;
+import org.czy.service.TestService;
+import org.czy.util.Daily;
+import org.czy.util.DescColumn;
+import org.czy.util.GetMaxOrMin;
+import org.czy.util.ReaderExcel;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.check.FormatCheck;
+import com.test.RunTest;
+import com.utils.tools.Tool;
+
+/**
+ * 
+ * @author dengpeng
+ *
+ */
+@Service
+public class TestServiceImpl implements TestService {
+
+	private final static Logger LOG = Logger.getLogger(TestService.class);
+
+	@Resource
+	private DescriptionMapper descriptionMapper;
+
+	@Resource
+	private TestMapper testMapper;
+
+	@Resource
+	private ProjectMapper projectMapper;
+
+	@Resource
+	private UserMapper userMapper;
+	
+	@Resource
+	private QcdbMapper qcdbMapper;
+
+	@Override
+	public boolean addTest(Test test, List<Description> descList, String projectid) {
+		Date date = new Date();
+		test.setCreatetime(date);
+		boolean flag = testMapper.insert(test) > 0 ? true : false;
+		int testID = testMapper.selectByTestName(test.getTestname(), projectMapper.selectByPID(projectid).getId())
+				.getId();
+		if (flag) {
+			try {
+				for (Description description : descList) {
+					if (description != null) {
+						description.setTestid(testID);
+						descriptionMapper.insert(description);
+					}
+				}
+				flag = true;
+			} catch (Exception e) {
+				LOG.error(e);
+				flag = false;
+			}
+		}
+		return flag;
+	}
+
+	@Override
+	public List<Project> getProById(Qcdb db) {
+		if (!db.getProjectid().equals("")) {
+			List<Project> list = projectMapper.selectAllByProID(db.getProjectid().split(","));
+			return list;
+		} else {
+			return null;
+		}
+
+	}
+
+	@Override
+	public List<TestList> getAllTest(Qcdb db, String projectid) {
+		// 同步QC和CH库中指定文件夹下的用例名
+		List<Test> qclistTemp = Tool.getTestNameID(projectid, db);
+		List<Test> qclist = new ArrayList<Test>();
+		Project pro = projectMapper.selectByPID(projectid);
+		if (pro != null) {
+			List<Test> chlist = testMapper.selectByIds(pro.getId());
+			Map<Integer, Test> map = new HashMap<Integer, Test>();
+			Map<Integer, Test> chmap = new HashMap<Integer, Test>();
+			for (Test t : qclistTemp) {
+				Test qc = testMapper.selectByTidAndProID(pro.getId(), t.getTid());
+				if (qc != null) {
+					map.put(qc.getId(), qc);
+					Test test = new Test();
+					test.setId(qc.getId());
+					test.setTestname(t.getTestname());
+					test.setTid(qc.getTid());
+					qclist.add(test);
+				}
+			}
+			for (Test t : chlist) {
+				chmap.put(t.getId(), t);
+			}
+			for (int i = 0; i < qclist.size(); i++) {
+				Test qc = qclist.get(i);
+				boolean syncflag = false;
+				Test c = new Test();
+				for (int j = 0; j < chlist.size(); j++) {
+					Test ch = chlist.get(j);
+					if (qc.getTestname().equals(ch.getTestname()) && qc.getTid().equals(ch.getTid())) {
+						map.remove(qc.getId());
+						chmap.remove(qc.getId());
+						break;
+					}
+					if (!qc.getTestname().equals(ch.getTestname()) && qc.getTid().equals(ch.getTid())) {
+						// 同步qc和ch库用例名
+						syncflag = true;
+						c = ch;
+						map.remove(qc.getId());
+						chmap.remove(qc.getId());
+						break;
+					}
+				}
+				if (syncflag) {
+					c.setTestname(qc.getTestname());
+					testMapper.updateByPrimaryKey(c);
+				}
+			}
+			LOG.info("mapSize["+map.size()+"],chmapSize["+chmap.size()+"]");
+			// 删除ch库中与QC不存在的用例
+			for (int testID : map.keySet()) {
+				descriptionMapper.deleteByTestID(testID);
+				testMapper.deleteByPrimaryKey(testID);
+				LOG.info("["+testID+"]用例删除了");
+			}
+			for (int testID : chmap.keySet()) {
+				descriptionMapper.deleteByTestID(testID);
+				testMapper.deleteByPrimaryKey(testID);
+				LOG.info("["+testID+"]用例删除了");
+			}
+		}
+
+		List<TestList> list = new ArrayList<TestList>();
+		// 默认第一个文件夹id获取作为list输出
+		Map<String, String[]> testNameList = Tool.getyongliname(projectid, db);
+		// session共享同步问题判断
+		if (null == testNameList || !(testNameList.size() > 0)) {
+			return null;
+		}
+		// 根据库获取用例集合
+		String[] names = testNameList.get(projectid);
+		for (int i = 0; i < names.length; i++) {
+			TestList tl = new TestList();
+			Test test = testMapper.selectByTestName(names[i], projectMapper.selectByPID(projectid).getId());
+			boolean flag = test != null ? true : false;
+			tl.setTestname(names[i]);
+			tl.setFlag(flag);
+			tl.setTest(test);
+			list.add(tl);
+			if (flag) {
+				LOG.info(names[i] + "已同步");
+			} else {
+				LOG.info(names[i] + "未同步");
+			}
+		}
+		return list.size() == 0 ? null : list;
+	}
+
+	@Override
+	public Map<String, Object> selTestAndDescByID(int id) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("test", testMapper.selectByPrimaryKey(id));
+		List<Description> descTempList = descriptionMapper.selectByTestID(id);
+		List<Description> descList = new ArrayList<Description>();
+		for (Description desc : descTempList) {
+			String description = desc.getDescription();
+			String resultDesc = desc.getResultdescription();
+			if (null != description) {
+				desc.setDescription(description.replace("\"", "&quot;"));
+			}
+			if (null != resultDesc) {
+				desc.setResultdescription(resultDesc.replace("\"", "&quot;"));
+			}
+			descList.add(desc);
+		}
+		map.put("descList", descList);
+		return map;
+	}
+
+	@Override
+	public boolean updateTest(Test test, List<Description> descList) {
+		Date date = new Date();
+		test.setUpdatetime(date);
+		boolean flag = testMapper.updateByPrimaryKey(test) > 0 ? true : false;
+		int testID = test.getId();
+		if (flag) {
+			try {
+				for (Description description : descList) {
+					if (description != null) {
+						description.setTestid(testID);
+						String desc = description.getDescription();
+						String resultDesc = description.getResultdescription();
+						if (null != description) {
+							description.setDescription(desc.replace("&quot;", "\""));
+						}
+						if (null != resultDesc) {
+							description.setResultdescription(resultDesc.replace("&quot;", "\""));
+						}
+						if (description.getId() > 0) {
+							descriptionMapper.updateByPrimaryKey(description);
+						} else {
+							description.setId(null);
+							descriptionMapper.insert(description);
+						}
+					}
+				}
+				flag = true;
+			} catch (Exception e) {
+				e.printStackTrace();
+				LOG.error(e);
+				flag = false;
+			}
+		}
+		return flag;
+	}
+
+	@Override
+	public boolean delDesc(int id) {
+		return descriptionMapper.deleteByPrimaryKey(id) > 0 ? true : false;
+	}
+
+	@Override
+	public void checkQC(String testname, String projectid, String uid, Qcdb db) {
+		FormatCheck.formatcheck(testname, uid, db, projectid);
+	}
+
+	@Override
+	public Object[] syncTest(String testname, String projectid, int uid, Qcdb db) {
+		Map<Integer, SyncTest> qcMap = Tool.getyongliAll(testname, db, projectid);
+		if (null == qcMap || !(qcMap.size() > 0)) {
+			return null;
+		}
+		int id = projectMapper.selectByPID(projectid).getId();
+		Test t = testMapper.selectByTestName(testname, id);
+		Object[] idAndFlag = new Object[2];
+		if (null != t) {
+			idAndFlag[0] = t.getId().toString();
+			idAndFlag[1] = true;
+			return idAndFlag;
+		}
+		Test test = new Test();
+		test.setTestname(testname);
+		test.setValue("0");
+		test.setCreatetime(new Date());
+		test.setNewuserid(uid);
+		test.setFail(0);
+		test.setSuccess(0);
+		test.setProjectid(id);
+		test.setTid(Tool.getTestName(projectid, testname, db));
+		test.setFlag(0);
+		boolean flag = testMapper.insert(test) > 0 ? true : false;
+		Test ts = testMapper.selectByTestName(test.getTestname(), projectMapper.selectByPID(projectid).getId());
+		idAndFlag[0] = ts.getId().toString();
+//		int serflag = 0;
+		if (flag) {
+			try {
+				for (int key : qcMap.keySet()) {
+					Description desc = new Description();
+					SyncTest synctest = qcMap.get(key);
+					if (synctest.getResultflag() != "") {
+						if (synctest.getResultflag().substring(0, 1).equals(RunTest.paramFlag)) {
+//							serflag = 1;
+						}
+					}
+					if (synctest.getDescflag() != "") {
+						if (synctest.getDescflag().substring(0, 1).equals(RunTest.paramFlag)) {
+//							serflag = 1;
+						}
+					}
+					desc.setTestid(Integer.valueOf(idAndFlag[0].toString()));
+					if (synctest.getResultname() != null && synctest.getResultname() != "") {
+						desc.setResulttype("xpath");
+					}
+					desc.setResultname(synctest.getResultname());
+					desc.setName(synctest.getName());
+					desc.setType("xpath");
+					desc.setStep(synctest.getStep());
+					descriptionMapper.insert(desc);
+				}
+
+				flag = false;
+			} catch (Exception e) {
+				LOG.error(e);
+				flag = true;
+			}
+		}
+//		if (serflag == 1) {
+//			ts.setFlag(serflag);
+//			testMapper.updateByPrimaryKey(ts);
+//		}
+		idAndFlag[1] = flag;
+		return idAndFlag;
+	}
+
+	@Override
+	public List<Test> expect(String testname, String proid) {
+		return testMapper.selectLikeTestName(testname, proid);
+	}
+
+	@Override
+	public Test getTest(int id) {
+		return testMapper.selectByPrimaryKey(id);
+	}
+
+	@Override
+	public boolean updateTest(Test test) {
+		return testMapper.updateByPrimaryKey(test) > 0 ? true : false;
+	}
+
+	@Override
+	public boolean selSyncTest(Qcdb db, int testid, String proid) {
+		try {
+			Test t = testMapper.selectByPrimaryKey(testid);
+			String testName = t.getTestname();
+			Map<Integer, SyncTest> qcMap = Tool.getyongliAll(testName, db, proid);
+			if (null == qcMap || !(qcMap.size() > 0)) {
+				return false;
+			}
+			// ch库中占位符list
+			List<Description> chList = descriptionMapper.selectByTestID(testid);
+
+			// 键值对根据步骤获取desc对象
+			Map<Integer, Description> chMap = new HashMap<Integer, Description>();
+
+			// 循环数
+			int chSize = chList.size();
+			int qcSize = qcMap.size();
+
+			// 比较
+			List<String> chNames = new ArrayList<String>();
+			List<String> qcNames = new ArrayList<String>();
+			List<String> chResultNames = new ArrayList<String>();
+			List<String> qcResultNames = new ArrayList<String>();
+			// 获取ch和qc库中最大步骤数
+			int chMax[] = new int[chSize];
+			int qcMax[] = new int[qcSize];
+
+			// 描述填装到list
+			for (int i = 0; i < chSize; i++) {
+				chNames.add(chList.get(i).getName());
+				chResultNames.add(chList.get(i).getResultname());
+				chMap.put(chList.get(i).getStep(), chList.get(i));
+				chMax[i] = chList.get(i).getStep();
+			}
+
+			int index = 0;
+			for (int key : qcMap.keySet()) {
+				SyncTest synctest = qcMap.get(key);
+				qcNames.add(synctest.getName());
+				qcResultNames.add(synctest.getResultname());
+				qcMax[index] = synctest.getStep();
+				index++;
+			}
+			testMapper.updateByPrimaryKey(t);
+			// 步骤数
+			// int chCount = GetMaxOrMin.getArrayMax(chMax);
+			int qcCount = GetMaxOrMin.getArrayMax(qcMax);
+
+			for (int i = 1; i <= qcCount; i++) {
+				SyncTest test = qcMap.get(i);
+				Description chtest = chMap.get(i);
+				if (null != chtest) {
+					if (!chtest.getName().equals(test.getName())) {
+						Description cdes = null;
+						for (Description chDesc : chList) {
+							if (test.getName().equals(chDesc.getName())) {
+								cdes = chDesc;
+								chMap.remove(chDesc.getStep());
+								break;
+							}
+						}
+						if (null != cdes) {
+							cdes.setName(test.getName());
+							cdes.setResultname(test.getResultname());
+							cdes.setStep(test.getStep());
+							descriptionMapper.updateByPrimaryKey(cdes);
+						} else {
+							Description desc = new Description();
+							if (test.getResultname() != null && test.getResultname() != "") {
+								desc.setResulttype("xpath");
+							}
+							desc.setResultname(test.getResultname());
+							desc.setName(test.getName());
+							desc.setType("xpath");
+							desc.setTestid(testid);
+							desc.setStep(test.getStep());
+							descriptionMapper.insert(desc);
+						}
+					} else {
+						Description cdes = null;
+						for (Description chDesc : chList) {
+							if (test.getName().equals(chDesc.getName())) {
+								cdes = chDesc;
+								chMap.remove(chDesc.getStep());
+								break;
+							}
+						}
+						cdes.setName(test.getName());
+						cdes.setResultname(test.getResultname());
+						cdes.setStep(test.getStep());
+						descriptionMapper.updateByPrimaryKey(cdes);
+					}
+				} else {
+					Description cdes = null;
+					for (Description chDesc : chList) {
+						if (test.getName().equals(chDesc.getName())) {
+							cdes = chDesc;
+							chMap.remove(chDesc.getStep());
+							break;
+						}
+					}
+					if (null != cdes) {
+						cdes.setName(test.getName());
+						cdes.setResultname(test.getResultname());
+						cdes.setStep(test.getStep());
+						descriptionMapper.updateByPrimaryKey(cdes);
+					} else {
+						Description desc = new Description();
+						if (test.getResultname() != null && test.getResultname() != "") {
+							desc.setResulttype("xpath");
+						}
+						desc.setResultname(test.getResultname());
+						desc.setName(test.getName());
+						desc.setType("xpath");
+						desc.setTestid(testid);
+						desc.setStep(test.getStep());
+						descriptionMapper.insert(desc);
+					}
+				}
+			}
+			for (int step : chMap.keySet()) {
+				Description desc = chMap.get(step);
+				if (null != desc) {
+					descriptionMapper.deleteByPrimaryKey(desc.getId());
+				}
+			}
+
+		} catch (Exception e) {
+			LOG.error(e);
+			return false;
+		}
+		return true;
+	}
+
+	@Override
+	public List<Test> getTestByProjectIds(int pid) {
+		return testMapper.selectByIds(pid);
+	}
+
+	@Override
+	public List<TestCount> selectByUID(int uid) {
+		List<TestCount> list = new ArrayList<TestCount>();
+		List<Test> tests = testMapper.selectByUID(uid);
+		for (Test test : tests) {
+			int fail = test.getFail();
+			double count = fail + test.getSuccess();
+			TestCount tc = new TestCount();
+			tc.setTestName(test.getTestname());
+			tc.setDate(Daily.formatYYMMDD(test.getCreatetime()));
+			tc.setExecCount(fail + test.getSuccess());
+			tc.setStepCount(descriptionMapper.selectCountByTestID(test.getId()));
+			tc.setPercent((fail / count) * 100);
+			tc.setId(test.getId());
+			list.add(tc);
+		}
+		return list;
+	}
+
+	@Override
+	public List<UserCount> getUserCount() {
+		List<UserCount> list = new ArrayList<UserCount>();
+		List<User> users = userMapper.getAll();
+		for (User u : users) {
+			List<Test> tests = testMapper.selectByUID(u.getId());
+			UserCount uc = new UserCount();
+			uc.setTestCount(tests.size());
+			uc.setName(u.getNickname() + "-" + u.getName());
+			int num = 0;
+			for (Test test : tests) {
+				num += descriptionMapper.selectCountByTestID(test.getId());
+			}
+			uc.setStepCount(num);
+			uc.setId(u.getId());
+			list.add(uc);
+		}
+		return list;
+	}
+
+	@Override
+	public List<TreeFolder> getTestTree(Qcdb db) {
+		// 文件夹集合
+		List<TreeFolder> tree = null;
+		String pid = db.getProjectid();
+		String ids[] = null;
+		if (pid != null && pid != "") {
+			ids = pid.split(",");
+		}
+		if (null != ids) {
+			// List<String> pids = projectMapper.selectByProID(ids);
+			if (null != ids) {
+				tree = new ArrayList<TreeFolder>();
+				for (String id : ids) {
+					// 文件夹
+					TreeFolder folder = new TreeFolder();
+					Project pro = projectMapper.selectByPrimaryKey(Integer.valueOf(id));
+					if (pro == null) {
+						continue;
+					}
+					// ch库查询出的用例集合
+//					List<Test> tl = testMapper.selectByIdsAndFlag(Integer.valueOf(id), 0);
+					List<Test> tl = testMapper.selectByIds(Integer.valueOf(id));
+					// 用例集合
+					List<TreeTest> tests = new ArrayList<TreeTest>();
+					for (Test test : tl) {
+						boolean flag = true;
+						// 用例
+						TreeTest treetest = new TreeTest();
+						treetest.setId(test.getId().toString());
+						List<Description> l = descriptionMapper.selectByTestID(test.getId());
+						for (Description dc : l) {
+							if(dc.getDescription()!=null&&dc.getDescription()!=""){
+								flag = false;
+							}
+						}
+						if(flag){
+							treetest.setText("<span style='color:red;'>"+test.getTestname()+"</span>");
+						}else{
+							if(null!=test.getFlag()){
+								switch(test.getFlag()){
+									case 0:
+										treetest.setText("<span style='color:yellow;'>"+test.getTestname()+"</span>");
+										break;
+									case 1:
+										treetest.setText("<span style='color:red;'>"+test.getTestname()+"</span>");
+										break;
+									case 2:
+										treetest.setText("<span style='color:green;'>"+test.getTestname()+"</span>");
+										break;
+									default:
+										break;
+								}
+							}else{
+								treetest.setText("<span style='color:red;'>"+test.getTestname()+"</span>");
+							}
+						}
+						tests.add(treetest);
+					}
+					folder.setText(pro.getName());
+					if (tests.size() > 0) {
+						folder.setChildren(tests);
+					} else {
+						folder.setChildren(null);
+						folder.setState("closed");
+					}
+					tree.add(folder);
+				}
+			}
+		}
+		return tree;
+	}
+
+	@Override
+	public List<TreeFolder> getTestTree(Qcdb db, String testids) {
+		String[] ts = testids.split(",");
+		List<String> tids = Arrays.asList(ts);
+		// 文件夹集合
+		List<TreeFolder> tree = null;
+		String pid = db.getProjectid();
+		String ids[] = null;
+		if (pid != null && pid != "") {
+			ids = pid.split(",");
+		}
+		if (null != ids) {
+			// List<String> pids = projectMapper.selectByProID(ids);
+			if (null != ids) {
+				tree = new ArrayList<TreeFolder>();
+				for (String id : ids) {
+					// 文件夹
+					TreeFolder folder = new TreeFolder();
+					Project pro = projectMapper.selectByPrimaryKey(Integer.valueOf(id));
+					if (null == pro) {
+						continue;
+					}
+					// ch库查询出的用例集合
+//					List<Test> tl = testMapper.selectByIdsAndFlag(Integer.valueOf(id), 0);
+					List<Test> tl = testMapper.selectByIds(Integer.valueOf(id));
+					// 用例集合
+					List<TreeTest> tests = new ArrayList<TreeTest>();
+					boolean flag = true;
+					for (Test test : tl) {
+						boolean tflag = true;
+						// 用例
+						TreeTest treetest = new TreeTest();
+						treetest.setId(test.getId().toString());
+						List<Description> l = descriptionMapper.selectByTestID(test.getId());
+						for (Description dc : l) {
+							if(dc.getDescription()!=null&&dc.getDescription()!=""){
+								tflag = false;
+							}
+						}
+						if(tflag){
+							treetest.setText("<span style='color:red;'>"+test.getTestname()+"</span>");
+						}else{
+							if(null!=test.getFlag()){
+								switch(test.getFlag()){
+									case 0:
+										treetest.setText("<span style='color:yellow;'>"+test.getTestname()+"</span>");
+										break;
+									case 1:
+										treetest.setText("<span style='color:red;'>"+test.getTestname()+"</span>");
+										break;
+									case 2:
+										treetest.setText("<span style='color:green;'>"+test.getTestname()+"</span>");
+										break;
+									default:
+										break;
+								}
+							}else{
+								treetest.setText("<span style='color:red;'>"+test.getTestname()+"</span>");
+							}
+						}
+						if (tids.contains(test.getId().toString())) {
+							treetest.setChecked(true);
+						} else {
+							flag = false;
+							treetest.setChecked(false);
+						}
+						tests.add(treetest);
+					}
+					folder.setText(pro.getName());
+					if (tests.size() > 0) {
+						folder.setChecked(flag);
+						folder.setChildren(tests);
+					} else {
+						folder.setChildren(null);
+						folder.setState("closed");
+					}
+					tree.add(folder);
+				}
+			}
+		}
+		return tree;
+	}
+
+	@Override
+	public void syncFolder(Qcdb db, int id) {
+		Project pro = projectMapper.selectByPrimaryKey(id);
+		String projectid = pro.getProjectid();
+		// 同步QC和CH库中指定文件夹下的用例名
+		List<Test> qclistTemp = Tool.getTestNameID(projectid, db);
+		List<Test> qclist = new ArrayList<Test>();
+		if (pro != null) {
+			List<Test> chlist = testMapper.selectByIds(pro.getId());
+			Map<Integer, Test> map = new HashMap<Integer, Test>();
+			Map<Integer, Test> chmap = new HashMap<Integer, Test>();
+			for (Test t : qclistTemp) {
+				Test qc = testMapper.selectByTidAndProID(pro.getId(), t.getTid());
+				if (qc != null) {
+					map.put(qc.getId(), qc);
+					Test test = new Test();
+					test.setId(qc.getId());
+					test.setTestname(t.getTestname());
+					test.setTid(qc.getTid());
+					qclist.add(test);
+				}
+			}
+			for (Test t : chlist) {
+				chmap.put(t.getId(), t);
+			}
+			for (int i = 0; i < qclist.size(); i++) {
+				Test qc = qclist.get(i);
+				boolean syncflag = false;
+				Test c = new Test();
+				for (int j = 0; j < chlist.size(); j++) {
+					Test ch = chlist.get(j);
+					if (qc.getTestname().equals(ch.getTestname()) && qc.getTid().equals(ch.getTid())) {
+						map.remove(qc.getId());
+						chmap.remove(qc.getId());
+						break;
+					}
+					if (!qc.getTestname().equals(ch.getTestname()) && qc.getTid().equals(ch.getTid())) {
+						// 同步qc和ch库用例名
+						syncflag = true;
+						c = ch;
+						map.remove(qc.getId());
+						chmap.remove(qc.getId());
+						break;
+					}
+				}
+				if (syncflag) {
+					c.setTestname(qc.getTestname());
+					testMapper.updateByPrimaryKey(c);
+				}
+			}
+			LOG.info("mapSize["+map.size()+"],chmapSize["+chmap.size()+"]");
+			// 删除ch库中与QC不存在的用例
+			for (int testID : map.keySet()) {
+				descriptionMapper.deleteByTestID(testID);
+				testMapper.deleteByPrimaryKey(testID);
+				LOG.info("["+testID+"]用例删除了");
+			}
+			for (int testID : chmap.keySet()) {
+				descriptionMapper.deleteByTestID(testID);
+				testMapper.deleteByPrimaryKey(testID);
+				LOG.info("["+testID+"]用例删除了");
+			}
+		}
+	}
+
+	@Override
+	public void exportExcelData(int id,String filepath) {
+		Test t = testMapper.selectByPrimaryKey(id);
+		if(null==t){
+			return;
+		}
+		List<Description> desclist = descriptionMapper.selectByTestID(id);
+		if(desclist==null||desclist.size()==0){
+			return;
+		}
+		List<List<String>> list = new ArrayList<List<String>>();
+		for (Description desc : desclist) {
+			List<String> l = new ArrayList<String>();
+//			l.add(desc.getId().toString());
+//			l.add(desc.getTestid().toString());
+			l.add(desc.getStep().toString());
+			l.add(desc.getType());
+			l.add(desc.getName());
+			l.add(desc.getDescription());
+			l.add(desc.getResultdescription());
+			l.add(desc.getResulttype());
+			l.add(desc.getResultname());
+			list.add(l);
+		}
+		ReaderExcel.exportExcel(filepath, t.getTestname(), list, DescColumn.getInstance().getHeadDesc());
+	}
+
+	@Override
+	public boolean dataHandle(String id, Qcdb db, MultipartFile file,int upuserid) {
+		boolean flag = true;
+		Map<Integer,Description> dmap = new HashMap<Integer,Description>();
+		Test test = testMapper.selectByPrimaryKey(Integer.valueOf(id));
+		Map<Integer,SyncTest> map = Tool.getTestAllByID(db, test.getTid());
+		List<Description> desclist = descriptionMapper.selectByTestID(Integer.valueOf(id));
+		for (Description desc : desclist) {
+			dmap.put(desc.getStep(), desc);
+		}
+		int qcCount = map.size();
+		try {
+			List<List<List<String>>> list = null;
+			try {
+				LOG.info("上传数据后缀是.xlsx");
+				list = ReaderExcel.readXlsx(file.getInputStream());
+			} catch (Exception e) {
+				LOG.info("上传数据后缀是.xls");
+				list = ReaderExcel.readXls(file.getInputStream());
+			}
+			if(null!=list){
+				List<List<String>> rowlist = list.get(0);
+				for (int i = 0;i< rowlist.size();i++) {
+					if(i==0){
+						continue;
+					}
+					List<String> row = rowlist.get(i);
+					int step = Integer.valueOf(row.get(0));
+					Description desc = dmap.get(step);
+					if(null!=desc){
+						desc.setType(row.get(1));
+//						desc.setName(row.get(2));
+						desc.setDescription(row.get(3));
+						desc.setResultdescription(row.get(4));
+						desc.setResulttype(row.get(5));
+//						desc.setResultname(row.get(6));
+					}else{
+						LOG.info("上传数据中第["+step+"]行在qc库中不存在");
+						SyncTest t = map.get(step);
+						desc = new Description();
+						desc.setType(row.get(1));
+						desc.setName(t.getName());
+						desc.setDescription(row.get(3));
+						desc.setResultdescription(row.get(4));
+						desc.setResulttype(row.get(5));
+						desc.setResultname(t.getResultname());
+						desc.setStep(step);
+					}
+					dmap.put(step, desc);
+				}
+				LOG.info("上传数据:更新数据条数-> "+dmap.size());
+				//更新,增加
+				for (int step : dmap.keySet()) {
+					Description desc = dmap.get(step);
+					if(null!=desc.getId()){
+						descriptionMapper.updateByPrimaryKey(desc);
+					}else{
+						if(step>qcCount){
+							LOG.info("上传数据中第["+step+"]行在qc库中不存在");
+							continue;
+						}
+						desc.setTestid(test.getId());
+						descriptionMapper.insert(desc);
+					}
+				}
+				test.setUpdateuserid(upuserid);
+				test.setUpdatetime(new Date());
+				test.setValue("1");
+				testMapper.updateByPrimaryKey(test);
+				flag = true;
+			}else{
+				return false;
+			}
+		} catch (IOException e) {
+			LOG.error(e);
+			flag = false;
+		}
+		return flag;
+	}
+
+	@Override
+	public String baseCopyToNew(Qcdb db,String baseFolderID, String newFolderID,int newUID) {
+		if(!Tool.checkQCFolder(db, baseFolderID)){
+			LOG.info("Base:["+baseFolderID+"]文件夹不存在");
+			return "Copy的文件夹编号不存在";
+		}
+		if(!Tool.checkQCFolder(db, newFolderID)){
+			LOG.info("New:["+newFolderID+"]文件夹不存在");
+			return "Copy至目标文件夹的编号不存在";
+		}
+		Map<String,TestCopyModel> baseMap = Tool.checkQCFolderTest(db, baseFolderID);
+		Map<String,TestCopyModel> newMap = Tool.checkQCFolderTest(db, newFolderID);
+		if(null==baseMap){
+			LOG.info("Base:["+baseFolderID+"]文件夹不能为空");
+			return "Copy的文件夹编号不能为空";
+		}
+		if(null==newMap){
+			LOG.info("New:["+newFolderID+"]文件夹不能为空");
+			return "Copy至目标文件夹的编号不能为空";
+		}
+		boolean folderFlag = false;
+		for (String testname : baseMap.keySet()) {
+			if(null!=newMap.get(testname)){
+				if(newMap.get(testname).getTestname().equals(testname)){
+					folderFlag = true;
+				}
+			}
+		}
+		Project folder = projectMapper.selectByPID(newFolderID);
+		if(null==folder){
+			if(folderFlag){
+				String folderName = Tool.getFolderName(db, newFolderID);
+				if(null!=folderName&&""!=folderName){
+					Project pro = new Project();
+					pro.setName(folderName);
+					pro.setProjectid(newFolderID);
+					projectMapper.insert(pro);
+					folder = projectMapper.selectByPID(newFolderID);
+					String proids = "";
+					if(db.getProjectid()==null||!db.getProjectid().equals("")){
+						proids = db.getProjectid() + "," +folder.getId();
+					}else{
+						proids = folder.getId().toString();
+					}
+					db.setProjectid(proids);
+					qcdbMapper.updateByPrimaryKey(db);
+				}else{
+					LOG.info("未查找到Base:["+baseFolderID+"]文件夹名");
+					return "未查找到文件夹["+baseFolderID+"]";
+				}
+			}else{
+				LOG.info("Base:["+baseFolderID+"]文件夹与New:["+newFolderID+"]文件夹没有可同步文件");
+				return "["+baseFolderID+"]文件夹与["+newFolderID+"]文件夹没有可Copy文件";
+			}
+		}
+		boolean flag = true;
+		for (String testName : newMap.keySet()) {
+			TestCopyModel baseTest = baseMap.get(testName);
+			TestCopyModel newTest = newMap.get(testName);
+			if(null!=baseTest&&null!=newTest){
+				Project baseProject = projectMapper.selectByPID(baseFolderID);
+				Test chBaseTest = testMapper.selectByTestName(testName, baseProject.getId());
+				if(chBaseTest==null){
+					continue;
+				}
+				Test chNewTest = testMapper.selectByTestName(testName, folder.getId());
+				if(chNewTest==null){
+					Test nt = new Test();
+					nt.setTestname(testName);
+					nt.setCreatetime(new Date());
+					nt.setNewuserid(newUID);
+					nt.setProjectid(folder.getId());
+					nt.setValue("0");
+					nt.setFail(0);
+					nt.setFlag(0);
+					nt.setSuccess(0);
+					nt.setTid(newTest.getTid());
+					testMapper.insert(nt);
+					chNewTest = testMapper.selectByTidAndProID(folder.getId(), newTest.getTid());
+					flag = false;
+				}
+				List<Description> baseDescList = descriptionMapper.selectByTestID(chBaseTest.getId());
+				if(!flag){
+					for (Description desc : baseDescList) {
+						desc.setTestid(chNewTest.getId());
+						desc.setId(null);
+						descriptionMapper.insert(desc);
+					}
+				}else{
+					List<Description> newDescList = descriptionMapper.selectByTestID(chNewTest.getId());
+					if(null!=newDescList){
+						Map<Integer, Description> baseDescMap = new HashMap<Integer, Description>();
+						for (Description desc : baseDescList) {
+							baseDescMap.put(desc.getStep(), desc);
+						}
+						for (Description desc : newDescList) {
+							Description newDesc = baseDescMap.get(desc.getStep());
+							if(null==newDesc){
+								continue;
+							}
+							newDesc.setId(desc.getId());
+							descriptionMapper.updateByPrimaryKey(newDesc);
+						}
+					}
+				}
+			}
+		}
+		if(flag){
+			LOG.info("["+baseFolderID+"]文件夹Copy至["+newFolderID+"]文件夹失败,没有可拷贝文件,用例已被Base覆盖");
+			return "["+baseFolderID+"]文件夹Copy至["+newFolderID+"]文件夹失败,没有可拷贝文件,用例已被Base覆盖";
+		}
+		LOG.info("Base:["+baseFolderID+"]文件夹与New:["+newFolderID+"]文件夹已成功同步");
+		return "["+baseFolderID+"]文件夹Copy至["+newFolderID+"]文件夹成功";
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public MainTestInfo welcomeInfo(int uid,String ids) {
+		String[] id = ids.split(",");
+		NumberFormat numberFormat = NumberFormat.getInstance();   
+        numberFormat.setMaximumFractionDigits(2);   
+		Date beginTime = new Date();
+		Date endTime = new Date();
+		beginTime.setDate(1);
+		endTime.setMonth(endTime.getMonth()+1);
+		endTime.setDate(1);
+		MainTestInfo main = new MainTestInfo();
+		int weekNewCount = testMapper.selectWeekTestCount(beginTime, endTime,uid,id);
+		int weekSuccess = testMapper.selectWeekTestStatus(beginTime, endTime, 2, uid,id);
+		int weekFail = testMapper.selectWeekTestStatus(beginTime, endTime, 1, uid,id);
+		int weekUnknow = testMapper.selectWeekTestStatus(beginTime, endTime, 0, uid,id);
+		int count = testMapper.selectTestCountByAll(id);
+		int allCount = testMapper.selectTestCountByUid(uid,id);
+		int allSuccess = testMapper.selectTestStatusByAll(2, uid,id);
+		int allFail = testMapper.selectTestStatusByAll(1, uid,id);
+		int allUnknown = testMapper.selectTestStatusByAll(0, uid,id);
+		main.setAllFail(allFail);
+		main.setAllUnknown(allUnknown);
+		main.setBeginTime(beginTime);
+		endTime.setDate(endTime.getDate()-1);
+		main.setEndTime(endTime);
+		main.setWeekSuccess(weekSuccess);
+		main.setWeekFail(weekFail+weekUnknow);
+		if(weekSuccess==0){
+			main.setRate(0.0);
+		}else{
+			main.setRate(Double.valueOf(numberFormat.format((((double)weekSuccess/(double)weekNewCount)*100))));
+		}
+		main.setWeekNewTest(weekNewCount);
+		if(allSuccess==0){
+			main.setAllSuccessRate(0.0);
+		}else{
+			main.setAllSuccessRate(Double.valueOf(numberFormat.format((((double)allSuccess/(double)allCount)*100))));
+		}
+		if(allFail==0){
+			main.setAllFailRate(0.0);
+		}else{
+			main.setAllFailRate(Double.valueOf(numberFormat.format((((double)allFail/(double)allCount)*100))));
+		}
+		if(allUnknown==0){
+			main.setAllUnknownRate(0.0);
+		}else{
+			main.setAllUnknownRate(Double.valueOf(numberFormat.format((((double)allUnknown/(double)allCount)*100))));
+		}
+		if(allCount==0){
+			main.setAllPersonalRate(0.0);
+		}else{
+			main.setAllPersonalRate(Double.valueOf(numberFormat.format((((double)allCount/(double)count)*100))));
+		}
+		return main;
+	}
+
+	@Override
+	public List<Test> selLimitByData(String[] ids,int uid) {
+		return testMapper.selectTestLimitByData(0, 5, ids,uid);
+	}
+
+	@Override
+	public List<Test> getUserAllTest(int uid, String[] ids) {
+		List<Test> list = testMapper.selectByUIDInProid(uid, ids);
+		return list;
+	}
+
+	@Override
+	public List<Test> getUserStatusTest(int flag, int uid, String[] ids) {
+		return testMapper.selectTestStatusByUser(flag, uid, ids);
+	}
+
+	@Override
+	public List<Test> getQcdbTestByTName(String testName, String[] ids) {
+		if(null!=testName&&testName!=""){
+			return testMapper.selectLikeTestNameByProid(testName, ids);
+		}else{
+			return null;
+		}
+	}
+
+	@Override
+	public boolean selectExecStatus(int flag, String[] ids) {
+		return testMapper.selectExecStatus(flag, ids)>0?false:true;
+	}
+
+}

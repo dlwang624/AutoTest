@@ -1,0 +1,84 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/common.css"/>
+<link href="js/themes/default/easyui.css" rel="stylesheet" />
+<link href="js/themes/icon.css" rel="stylesheet" />
+<link rel="stylesheet" href="css/ExecTest.css"/>
+<link rel="stylesheet" href="css/table.css"/>
+<title>自动化测试用例执行</title>
+<style type="text/css">
+select{
+    font-size:14px;
+	line-height:25px;
+	padding:5px 0px; 
+}
+#iframeName{
+	width: 300px;
+    font-size: 12px;
+    line-height: 25px;
+    margin: 0px 0px 3px 0px;
+}
+#execNum{
+	width: 30px;
+    font-size: 12px;
+    line-height: 25px;
+    margin: 0px 0px 3px 0px;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+<input id="localAddress" type="text" value="${localAddress}" class="none"/>
+<div id="execwait">
+	<div style='left:50%;background:white;height:150px;width:400px;position: relative;top: 50%;margin-left:-150px;margin-top:-150px;'>
+		<p style='color:red;font-weight:bold;font-size:16px;'>正在执行用例</p>
+		<p style='color:red;font-weight:bold;font-size:16px;'><span id="testname"></span></p>
+		<p style='color:red;font-weight:bold;font-size:16px;'>请稍等...</p>
+		<div>
+			<image src='image/wait.gif' width='400px' height='150px' />
+		</div>
+	</div>
+</div>
+<div id="divLocker"></div>
+<div class="main10">
+	<p>客户的ID: ${uid}</p>
+	<p>客户的IP: ${userAddress}</p>
+	<p>服务器IP: ${localAddress}</p>
+	<p class="fontred f16">查看运行过程的用户,请在每次批量执行完成后重启hub和node.</p>
+	<div><input type="button" value="返回" class="backBtn" id="back"></div>
+	<input id="userAddress" type="text" value="${userAddress}" class="none"/>
+	<input id="localAddress" type="text" value="${localAddress}" class="none"/>
+	<div class="clearfix">
+		<div class="clearfix">
+			<div class="fl w100 tr mr5 h30">用例表:</div>
+			<div class="fl tl w450">
+				<ul id="testtree"></ul>
+			</div>
+			<input type="text" id="rurl" class="none">
+			<div class="fl">
+				<span>群体邮件告知:</span>
+				<input type="checkbox" id="emailflag">
+				<span>是否启用浏览器:</span>
+				<input type="checkbox" id="browserflag">
+				<input type="button" id="startTest" value="开始执行">
+			</div>
+			<div class="fl" id="reportLink" style="display: none;">
+				<input type="button" id="report" value="报告">
+			</div>
+		</div>
+	</div>
+</div>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script type="text/javascript" src="js/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="js/locale/easyui-lang-zh_CN.js"></script>
+<script type="text/javascript" src="js/batchtest.js"></script>
+<script type="text/javascript" src="js/batchsocket.js"></script>
+</body>
+</body>
+</html>

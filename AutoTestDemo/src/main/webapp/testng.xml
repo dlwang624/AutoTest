@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="Test Report" parallel="none">
+	<listeners>
+		<listener class-name="org.czy.report.TestNGListener" />
+		<listener class-name="org.uncommons.reportng.HTMLReporter" />
+		<listener class-name="org.uncommons.reportng.JUnitXMLReporter" />
+	</listeners>
+	<test name="RunTest">
+		<classes>
+			<class name="com.test.RunTest"></class>
+		</classes>
+		<!-- <parameters> -->
+		<!-- <parameter name="testName"/> -->
+		<!-- <parameter name="uid"/> -->
+		<!-- <parameter name="ip"/> -->
+		<!-- </parameters> -->
+	</test> <!-- Test -->
+</suite> <!-- Suite -->

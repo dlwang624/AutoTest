@@ -1,0 +1,55 @@
+package com.check;
+
+import java.util.List;
+
+import org.apache.log4j.Logger;
+import org.czy.controller.TestController;
+import org.czy.entity.Qcdb;
+import org.czy.websocket.WebsocketHandler;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+
+import com.framework.MainAction;
+import com.framework.NewImpAction;
+import com.framework.NewUITestPC;
+import com.test.RunTest;
+
+public class CheckElement extends NewUITestPC{
+
+	public static String isElementExist(MainAction action, WebElement element, Qcdb db) {
+		final Logger LOG = Logger.getLogger(TestController.class);
+		String logCon = "";
+		String resultPath = action.getResultpath();
+		List<String> expects = action.getResultDescContent();
+
+		if (null != expects && expects.size() > 1) {
+
+			WebElement ele = driver.findElement(By.xpath(resultPath));
+			String te = ele.getText();
+
+			if (expects.contains(te)) {
+				logCon += "---"+ expects + " 在页面中存在，并通过验证";
+			} else {
+				logCon += "@@@---"+ expects + " 在页面中“不”存在，验证失败";
+			}
+//			WebsocketHandler.sendMessageToUser(RunTest.uid, logCon);
+		} else if (null != expects && expects.size() == 1) {
+			String expect = expects.get(0).toString();
+
+			WebElement ele = driver.findElement(By.xpath(resultPath));
+			String te = ele.getText();
+
+			if (te.contains(expect)) {
+				logCon += "---"+ expect + " 在页面中存在，并通过验证";
+			} else {
+				logCon += "@@@---"+ expect + " 在页面中“不”存在，验证失败";
+			}
+//			WebsocketHandler.sendMessageToUser(RunTest.uid, logCon);
+			LOG.info(logCon);
+		}
+		return logCon;
+
+	}
+
+}

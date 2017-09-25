@@ -1,0 +1,270 @@
+package org.czy.service.impl;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.apache.commons.net.ftp.FTPClient;
+import org.apache.log4j.Logger;
+import org.czy.dao.ToolsMapper;
+import org.czy.entity.Tools;
+import org.czy.service.ToolsService;
+import org.czy.util.Final;
+import org.czy.util.Ftp;
+import org.czy.util.GetFtpData;
+import org.czy.util.Path;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+@Service
+public class ToolsServiceImpl implements ToolsService {
+	
+	private final static Logger LOG = Logger.getLogger(ToolsServiceImpl.class);
+
+	@Resource
+	private ToolsMapper toolsMapper;
+	
+	@Override
+	public boolean addTool(Tools tool, MultipartFile[] helps,MultipartFile tl) {
+		boolean flag = false;
+		Tools t = toolsMapper.selectByName(tool.getName());
+		if(t!=null){
+			return false;
+		}
+		tool.setDownloadcount(0);
+		tool.setUsecount(0);
+		if(toolsMapper.insert(tool)>0){
+			Tools tol = toolsMapper.selectByName(tool.getName());
+			//上传帮助文档
+			if(null!=helps&&helps.length>0){
+				String help = "";
+				for (MultipartFile file : helps) {
+					help += saveFile(file, tol.getId(), 1)+",";
+				}
+				tol.setStudyurl(help.substring(0,help.length()-1));
+			}
+			//上传工具
+			if(null!=tl&&tol.getToolclass()==0){
+				tol.setUrl(saveFile(tl, tol.getId(), 0));
+			}
+			toolsMapper.updateByPrimaryKey(tol);
+			return true;
+		}
+		return flag;
+	}
+	
+	
+	/**
+	 * 
+	 * @param file 文件
+	 * @param toolsID 工具id
+	 * @param fileOrHelps 文件为0,帮助文档为1
+	 * @return
+	 */
+	private String saveFile(MultipartFile file,int toolsID,int fileOrHelps) {
+		String path = "";
+		Ftp f = new Ftp();
+		FTPClient ftp = f.connect(Final.WORD_FTP_IP, Final.WORD_FTP_USERNAME, Final.WORD_FTP_PASSWORD);
+		// 判断文件是否为空
+		if (!file.isEmpty()) {
+			try {
+				
+				// 文件保存路径
+				String filePath = File.separator;
+				if(fileOrHelps==0){
+					filePath += Final.TOOLFILE+File.separator;
+				}else{
+					filePath += Final.STUDYURL+File.separator;
+				}
+				if (!ftp.changeWorkingDirectory(filePath)) { 
+					String msg = ftp.makeDirectory(filePath)?"创建成功":"创建失败";
+					LOG.info(filePath+"文件夹"+msg);
+				}
+				filePath += toolsID+File.separator;
+				if (!ftp.changeWorkingDirectory(filePath)) {  
+					String msg = ftp.makeDirectory(filePath)?"创建成功":"创建失败";
+					LOG.info(filePath+"文件夹"+msg);
+	            }
+				if(ftp.changeWorkingDirectory(filePath)){
+					LOG.info("FTP["+filePath+"]目录存在");
+				}else{
+					LOG.info("FTP["+filePath+"]目录不存在");
+				}
+				path = file.getOriginalFilename();
+				// 转存文件
+				saveFileToFtp(file,ftp);
+			} catch (Exception e) {
+				LOG.info(e);
+			}finally{
+				f.closed();
+			}
+		}
+		return path;
+	}
+	
+	/***
+	 * 保存文件
+	 * @param file
+	 * @return
+	 */
+	private boolean saveFileToFtp(MultipartFile file,FTPClient client) {
+		boolean flag = false;
+		// 判断文件是否为空
+		if (!file.isEmpty()) {
+			try {
+				// 文件保存路径
+				flag = GetFtpData.upload(file,client);
+			} catch (Exception e) {
+				LOG.info(e);
+				flag = false;
+			}
+		}
+		return flag;
+	}
+
+
+	@Override
+	public boolean checkToolName(String name) {
+		return toolsMapper.selectByName(name)!=null?true:false;
+	}
+
+
+	@Override
+	public List<Tools> getAllByType(int type) {
+		return toolsMapper.selectByType(type);
+	}
+
+
+	@Override
+	public void downloadCount(int id) {
+		Tools tool = toolsMapper.selectByPrimaryKey(id);
+		tool.setDownloadcount(tool.getDownloadcount()+1);
+		toolsMapper.updateByPrimaryKey(tool);
+	}
+
+
+	@Override
+	public String useCount(int id) {
+		Tools tool = toolsMapper.selectByPrimaryKey(id);
+		tool.setDownloadcount((tool.getDownloadcount()+1));
+		toolsMapper.updateByPrimaryKey(tool);
+		return tool.getUrl();
+	}
+
+
+	@Override
+	public Tools getById(int id) {
+		return toolsMapper.selectByPrimaryKey(id);
+	}
+
+
+	@Override
+	public boolean updateTool(Tools tool, MultipartFile[] helps, MultipartFile tl) {
+		Ftp f = new Ftp();
+		FTPClient ftp = f.connect(Final.WORD_FTP_IP, Final.WORD_FTP_USERNAME, Final.WORD_FTP_PASSWORD);
+		ftp.setControlEncoding(Final.WORD_SYSTEM_ENCODING);
+		boolean flag = false;
+		//判断工具文件夹
+		List<String> studys = new ArrayList<String>();
+		if(tool.getStudyurl()!=""&&!tool.getStudyurl().equals("")){
+			studys = Arrays.asList(tool.getStudyurl().split(","));
+		}
+		//判断帮助文件夹
+		if(tool.getStudyurl()==""||tool.getStudyurl().equals("")){
+			String toolpath = File.separator + Final.STUDYURL + File.separator+tool.getId();
+			List<String> toollist = GetFtpData.getfnames(toolpath,ftp);
+			if(null!=toollist){
+				for (String filename : toollist) {
+					GetFtpData.removef(filename, toolpath, ftp);
+				}
+			}
+		}else{
+			String toolpath = File.separator + Final.STUDYURL + File.separator+tool.getId();
+			List<String> toollist = GetFtpData.getfnames(toolpath,ftp);
+			if(null!=toollist){
+				for (String filename : toollist) {
+					if(!studys.contains(filename)){
+						GetFtpData.removef(filename, toolpath, ftp);
+					}
+				}
+			}
+		}
+		
+		tool.setUploadtime(new Date());
+		//更新帮助文档
+		if(null!=helps&&helps.length>0){
+			String help = tool.getStudyurl();
+			if(help!=""){
+				help += ",";
+			}
+			for (MultipartFile file : helps) {
+				String name = file.getOriginalFilename();
+				if(!studys.contains(file.getOriginalFilename())){
+					if(name!=null&&name!=""&&!name.equals("")){
+						help += saveFile(file, tool.getId(), 1)+",";
+					}
+				}
+			}
+			if(help!=""){
+				tool.setStudyurl(help.substring(0,help.length()-1));
+			}
+		}
+		//更新工具
+		if(null!=tl&&tool.getToolclass()==0){
+			String name = tl.getOriginalFilename();
+			if(name!=null&&name!=""&&!name.equals("")){
+				String helppath = File.separator + Final.TOOLFILE + File.separator+tool.getId();
+				List<String> helplist = GetFtpData.getfnames(helppath,ftp);
+				if(null!=helplist){
+					for (String filename : helplist) {
+						GetFtpData.removef(filename, helppath, ftp);
+					}
+				}
+				tool.setUrl(saveFile(tl, tool.getId(), 0));
+			}
+		}
+		//如果是外部链接删掉工具文件
+		if(tool.getToolclass()==1){
+			String helppath = File.separator + Final.TOOLFILE + File.separator+tool.getId();
+			List<String> helplist = GetFtpData.getfnames(helppath,ftp);
+			if(null!=helplist){
+				for (String filename : helplist) {
+					GetFtpData.removef(filename, helppath, ftp);
+				}
+			}
+		}
+		f.closed();
+		toolsMapper.updateByPrimaryKey(tool);
+		flag = true;
+		return flag;
+	}
+
+
+	@Override
+	public boolean deleteTool(int id) {
+		Ftp f = new Ftp();
+		FTPClient ftp = f.connect(Final.WORD_FTP_IP, Final.WORD_FTP_USERNAME, Final.WORD_FTP_PASSWORD);
+		ftp.setControlEncoding(Final.WORD_SYSTEM_ENCODING);
+		String toolpath = File.separator + Final.TOOLFILE + File.separator+id;
+		List<String> toollist = GetFtpData.getfnames(toolpath,ftp);
+		for (String filename : toollist) {
+			if(!GetFtpData.removef(filename, toolpath, ftp)){
+				return false;
+			}
+		}
+		String helppath = File.separator + Final.STUDYURL + File.separator+id;
+		List<String> helplist = GetFtpData.getfnames(helppath,ftp);
+		for (String filename : helplist) {
+			if(!GetFtpData.removef(filename, helppath, ftp)){
+				return false;
+			}
+		}
+		f.closed();
+		return toolsMapper.deleteByPrimaryKey(id)>0?true:false;
+	}
+
+}

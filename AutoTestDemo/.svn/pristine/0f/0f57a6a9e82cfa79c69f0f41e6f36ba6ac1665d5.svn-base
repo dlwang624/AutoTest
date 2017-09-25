@@ -1,0 +1,92 @@
+package org.czy.controller;
+
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.log4j.Logger;
+import org.czy.entity.Qcdb;
+import org.czy.entity.User;
+import org.czy.service.AuthorityService;
+import org.czy.service.ExecService;
+import org.czy.service.QcdbService;
+import org.czy.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.SessionAttributes;
+import org.springframework.web.servlet.ModelAndView;
+
+@Controller
+@RequestMapping("/user")
+@SessionAttributes({"basePath","uid","nickname","userAddress","localAddress","QCDB"})
+@Scope("prototype")
+public class UserController {
+	
+	private final static Logger LOG = Logger.getLogger(UserController.class);
+	
+	@Autowired
+	private ExecService execService;
+	
+	@Autowired
+	private UserService userService;
+	
+	@Autowired
+	private QcdbService qcdbService;
+	
+	@Autowired
+	private AuthorityService authorityService;
+	
+	
+	
+	/**
+	 * 登录
+	 * @author dengpeng
+	 * @param name
+	 * @param password
+	 * @param qcname
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value="/login.htm", method = RequestMethod.POST)
+	public ModelAndView login(String uname,String upass,int qcname,HttpServletRequest req){
+		User user = userService.userLogin(uname, upass);
+		Qcdb qcdb= qcdbService.selQcdb(qcname);
+		ModelAndView model = new ModelAndView();
+		if(null!=user){
+			model.getModelMap().addAttribute("uid", user.getId());
+			model.getModelMap().addAttribute("nickname", user.getNickname());
+			model.getModelMap().addAttribute("QCDB", qcdb);
+			model.getModelMap().put("li", authorityService.selectByIDs(user.getId()));
+			model.setViewName("main");
+			LOG.info("用户["+user.getNickname()+"]访问了"+qcname+"库");
+		}else{
+			model.getModelMap().addAttribute("list",qcdbService.getAllName());
+			model.getModelMap().addAttribute("msg", "输入的用户名或密码错误");
+			LOG.info("用户名["+uname+"],密码["+upass+"]访问了失败");
+			model.setViewName("login");
+		}
+		return model;
+	}
+	
+	/**
+	 * 跳转登录页面
+	 * @author dengpeng
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value="/index.htm", method = RequestMethod.GET)
+	public ModelAndView index(HttpServletRequest req){
+		ModelAndView model = new ModelAndView();
+		String path = req.getContextPath();
+		model.getModelMap().addAttribute("basePath", path + "/");
+		model.getModelMap().addAttribute("userAddress", execService.getAddress(req));
+		model.getModelMap().addAttribute("localAddress", req.getLocalAddr());
+		List<Qcdb> list = qcdbService.getAllName();
+		model.getModelMap().addAttribute("list",list);
+		model.setViewName("login");
+		return model;
+	}
+}

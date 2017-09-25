@@ -1,0 +1,356 @@
+var sk = null;
+$(function(){
+	$('#divLocker').hide();
+	$('#execwait').hide();
+//	$(window).scroll(function(){
+//		var y = $(this).scrollTop();//获得滚动条top值
+//		var lockheight = $('#lockdiv').height();
+//		var lockwidth = $('#lockdiv').width();
+//		var waitwidth = $('#waitdiv').width();
+//		var waitheight = $('#waitdiv').height();
+//		if ($(this).scrollTop() < 400) {
+//	    	$("#lockdiv").css({top:"400px"}); //设置div层定位，要绝对定位
+//	    	$("#waitdiv").css({top:"400px"}); //设置div层定位，要绝对定位
+//		}else{
+//	    	$("#lockdiv").css({top:yy+"px"});
+//	    	$("#waitdiv").css({top:yy+"px"});
+//	   }
+//	});
+	$.ajax({
+	  type: 'GET',
+	  url: "CMS/batchTest.htm",
+	  dataType: "json",
+	  success: function(data){
+		  if(data!=null){
+//			  layer.alert(JSON.stringify(data));
+			  $("#testtree").tree({
+		        data: data,
+		        checkbox: true,
+		        cascadeCheck: true,
+		        onClick: function (node, checked) {
+		          if (checked) {
+		            var parentNode = $("#testtree").tree('getParent', node.target);
+					var childNode = $("#testtree").tree('getChildren', node.target);
+		            if (parentNode != null) {
+		              $("#testtree").tree('check', parentNode.target);
+		            }
+		          } else {
+		            var childNode = $("#testtree").tree('getChildren', node.target);
+		            if (childNode.length > 0) {
+		              for (var i = 0; i < childNode.length; i++) {
+		                $("#testtree").tree('uncheck', childNode[i].target);
+		              }
+		            }
+		          }
+		        }
+		      });
+		  }else{
+			  layer.alert("当前QC库中没有测试用例");
+			  window.location.href="Exec/RunTest.htm";
+		  }
+	  },
+	  error: function (xhr, status, text) {
+          switch (status) {
+             case 404:
+                 console.log("File not found");
+                 break;
+             case 500:
+                 console.log("Server error");
+                 break;
+             case 0:
+                 console.log("Request aborted");
+                 break;
+             default:
+            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+            	 		+ "readyState: " + xhr.readyState + "\n"
+            	 		+ "responseText: "+ xhr.responseText + "\n"
+            	 		+ "status: " + xhr.status + "\n"
+            	 console.log(msg);
+            }
+        }
+	});
+	
+	$("#startTest").click(function(){
+		$("#testname").html("");
+		sk = new com.czy.websocket("#testname","#localAddress").init();
+		var testids = getChecked();
+		var browserFlag = $("#browserflag").is(':checked');
+		var emailflag = $("#emailflag").is(':checked');
+		var swid = $("#switchAmbient").val();
+		if(testids==""||testids=="undefined"){
+			layer.alert("请选择执行用例");
+			return false;
+		}
+		$(this).attr("disabled","true");
+		$("#back").attr("disabled","true");
+		checkShowRunDialog();
+		$.ajax({
+			  type: 'POST',
+			  url: "Exec/execbatchtest.htm",
+			  data:{"swid":swid,"testids":testids,"emailflag":emailflag,"browserFlag":browserFlag},
+			  dataType: "json",
+			  success: function(data){
+				//生成报告URL参数填充
+				  if(data.msg.indexOf("是否继续等待?")>0){
+					  layer.confirm(data.msg, {
+						  btn: ['确定', '取消'] //可以无限个按钮
+						}, function(){
+							addLockerCss();
+							$("#divLocker").show();
+							$("#execwait").hide();
+							if(!waitQueue()){
+								IntervalID = setInterval("waitQueue()",5000);
+							}
+							layer.closeAll('dialog');
+						}, function(){
+							closeWait();
+							layer.closeAll('dialog');
+						});
+				  }else{
+					  closeWait();
+					  $("#rurl").val(data.url);
+					  if(data.url!=""){
+						  reporterShow();
+					  }
+					  layer.alert("执行用例完成");
+				  }
+				  if(data.msg!="SUCCESS"&&data.msg.indexOf("是否继续等待?")<0){
+					  layer.alert(data.msg);
+				  }
+			  },
+			  error: function (xhr, status, text) {
+				  closeWait();
+		          switch (status) {
+		             case 404:
+		                 console.log("File not found");
+		                 break;
+		             case 500:
+		                 console.log("Server error");
+		                 break;
+		             case 0:
+		                 console.log("Request aborted");
+		                 break;
+		             default:
+		            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+		            	 		+ "readyState: " + xhr.readyState + "\n"
+		            	 		+ "responseText: "+ xhr.responseText + "\n"
+		            	 		+ "status: " + xhr.status + "\n"
+		            	 console.log(msg);
+		            }
+		        }
+			});
+	});
+	
+	$("#back").click(function(){
+		window.location.href="CMS/allTest.htm";
+	});
+});
+
+function getChecked()
+{
+  var arr = [];
+  var checkeds = $('#testtree').tree('getChecked', 'checked');
+  for (var i = 0; i < checkeds.length; i++) {
+	var id = checkeds[i].id;
+	if(id!=""&&id!=undefined){
+		arr.push(id);
+	}
+    
+  }
+  //layer.alert(arr.join(','));
+  return arr.join(',');
+}
+
+function checkShowRunDialog(){
+	$.ajax({
+	  type: 'GET',
+	  url: "Exec/waitQueue.htm",
+	  dataType: "json",
+	  success: function(data){
+		  if(data.index==0){
+			  addWaitCss();
+			  $("#execwait").show();
+		  }
+	  },
+	  error: function (xhr, status, text) {
+          switch (status) {
+             case 404:
+                 console.log("File not found");
+                 break;
+             case 500:
+                 console.log("Server error");
+                 break;
+             case 0:
+                 console.log("Request aborted");
+                 break;
+             default:
+            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+            	 		+ "readyState: " + xhr.readyState + "\n"
+            	 		+ "responseText: "+ xhr.responseText + "\n"
+            	 		+ "status: " + xhr.status + "\n"
+            	 console.log(msg);
+            }
+        }
+	});
+}
+
+function waitQueue(){
+	$.ajax({
+	  type: 'GET',
+	  url: "Exec/waitQueue.htm",
+	  dataType: "json",
+	  success: function(data){
+		  if(data.index!=0){
+			  $("#divLocker").html("<div style='left:50%;background: transparent;height:150px;width:300px;position: relative;top: 50%;margin-left:-150px;margin-top:-75px;'><div role='alert' class='alert alert-warning alert-dismissible' style='margin: 0;padding:0;height:100%;color:black;text-align: center;'><button onclick='closeWaitAndDIV()' aria-label='Close' data-dismiss='alert' class='close' type='button' style='left: 0px;'><span aria-hidden='true' class='red'>×</span></button><i class='fa fa-warning yellow'></i> 您前面还有["+data.index+"]人<div style='width:300px;height:100px;text-align: center;line-height:100px;'><image src='image/loading.gif' style='border:0px;'/></div></div></div>");
+		  }else{
+			  clearInterval(IntervalID);
+			  $("#divLocker").hide();
+			  addWaitCss();
+			  $("#execwait").show();
+			  var testids = getChecked();
+			  var emailflag = $("#emailflag").is(':checked');
+			  var browserFlag = $("#browserflag").is(':checked');
+			  var swid = $("#switchAmbient").val();
+			  $.ajax({
+				  type: 'POST',
+				  url: "Exec/execbatchtest.htm",
+				  data:{"swid":swid,"testids":testids,"emailflag":emailflag,"browserFlag":browserFlag},
+				  dataType: "json",
+				  success: function(data){
+					  closeWait();
+					  $("#rurl").val(data.url);
+					  if(data.url!=""){
+						  reporterShow();
+					  }
+					  layer.alert("执行用例完成");
+					  return false;
+				  },
+				  error: function (xhr, status, text) {
+					  closeWait();
+			          switch (status) {
+			             case 404:
+			                 console.log("File not found");
+			                 break;
+			             case 500:
+			                 console.log("Server error");
+			                 break;
+			             case 0:
+			                 console.log("Request aborted");
+			                 break;
+			             default:
+			            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+			            	 		+ "readyState: " + xhr.readyState + "\n"
+			            	 		+ "responseText: "+ xhr.responseText + "\n"
+			            	 		+ "status: " + xhr.status + "\n"
+			            	 console.log(msg);
+			            }
+			        }
+				});
+		  }
+	  },
+	  error: function (xhr, status, text) {
+		  removeQueue();
+          switch (status) {
+             case 404:
+                 console.log("File not found");
+                 break;
+             case 500:
+                 console.log("Server error");
+                 break;
+             case 0:
+                 console.log("Request aborted");
+                 break;
+             default:
+            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+            	 		+ "readyState: " + xhr.readyState + "\n"
+            	 		+ "responseText: "+ xhr.responseText + "\n"
+            	 		+ "status: " + xhr.status + "\n"
+            	 console.log(msg);
+            }
+        }
+	});
+}
+
+
+function removeQueue(){
+	$.ajax({
+		  type: 'GET',
+		  url: "Exec/RemoveQueue.htm",
+		  success: function(){
+		  },
+		  error: function (xhr, status, text) {
+	          switch (status) {
+	             case 404:
+	                 console.log("File not found");
+	                 break;
+	             case 500:
+	                 console.log("Server error");
+	                 break;
+	             case 0:
+	                 console.log("Request aborted");
+	                 break;
+	             default:
+	            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+	            	 		+ "readyState: " + xhr.readyState + "\n"
+	            	 		+ "responseText: "+ xhr.responseText + "\n"
+	            	 		+ "status: " + xhr.status + "\n"
+	            	 console.log(msg);
+	            }
+	        }
+		});
+}
+
+
+function addLockerCss(){
+	$('#divLocker').css({
+	    "position": "absolute",
+	    "margin": "0 auto",
+	    "background-color": "#000000",
+	    "height": "100%",
+	    "filter": "alpha(opacity=40)",
+	    "opacity": "0.4",
+	    "overflow": "hidden",
+	    "width": "100%",
+	    "z-index": "1111"
+	});
+}
+
+function addWaitCss(){
+	$("#execwait").css({
+		"position": "absolute",
+		"margin": "0 auto",
+		"background-color": "#000000",
+		"height":"100%",
+	    "filter": "alpha(opacity=40)",
+	    "opacity": "0.4",
+	    "overflow": "hidden",
+	    "width": "100%",
+	    "z-index": "1110"
+	});
+}
+
+function closeWaitAndDIV(){
+	$("#divLocker").hide();
+	clearInterval(IntervalID);
+	sk.close();
+  	$("#startTest").removeAttr("disabled");
+  	$("#back").removeAttr("disabled");
+  	removeQueue();
+}
+
+function closeWait(){
+	sk.close();
+  	$("#startTest").removeAttr("disabled");
+  	$("#back").removeAttr("disabled");
+  	$("#execwait").hide();
+  	removeQueue();
+}
+
+function reporterShow(){
+	var url = $("#rurl").val();
+	$("#report").removeAttr("onclick");
+	$("#report").click(function(){
+		window.open(url);
+	});
+	$("#report").show();
+}

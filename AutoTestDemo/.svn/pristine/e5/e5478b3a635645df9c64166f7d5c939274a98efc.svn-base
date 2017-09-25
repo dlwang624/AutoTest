@@ -1,0 +1,178 @@
+$(function(){
+	$("#testlog").text("请等待...");
+	$("#filetab").change(function(){
+		$("input[type='button']").attr("disabled","true");
+		$("#projectid").val($(this).val());
+		$("#changeSelect").submit();
+	});
+});
+//返回事件
+$("#back").click(function(){
+	window.location.href="project/main.htm";
+});
+
+
+function unlockTest(id){
+	$("input[type='button']").each(function(){
+		$(this).attr("disabled","true");
+	});
+	$.ajax({
+		  type: 'GET',
+		  url: "CMS/unlocked.htm?id="+id,
+		  dataType: "json",
+		  success: function(data){
+			alert(data.msg);
+			$("input[type='button']").each(function(){
+				$(this).removeAttr("disabled");
+			});
+		  },
+		  error: function (xhr, status, text) {
+			  $("input[type='button']").each(function(){
+					$(this).removeAttr("disabled");
+				});
+	          switch (status) {
+	             case 404:
+	                 console.log("File not found");
+	                 break;
+	             case 500:
+	                 console.log("Server error");
+	                 break;
+	             case 0:
+	                 console.log("Request aborted");
+	                 break;
+	             default:
+	            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+	            	 		+ "readyState: " + xhr.readyState + "\n"
+	            	 		+ "responseText: "+ xhr.responseText + "\n"
+	            	 		+ "status: " + xhr.status + "\n"
+	            	 console.log(msg);
+	            }
+	        }
+		});
+}
+//查找实例或checkQC规范
+function selTestOrSyncQC(btn,testName,id){
+	$(btn).attr("disabled","true");
+	var btnVal = $(btn).val();
+	var projectid = $("#projectid").val();
+	if(btnVal=="查看"){
+		if(id!=""){
+			$.ajax({
+			  type: 'POST',
+			  url: "CMS/testValue.htm",
+			  data:{"id":id},
+			  dataType: "json",
+			  success: function(data){
+				if(data.value=="1"){
+					alert("此用例正在被他人编辑");
+					$(btn).removeAttr("disabled");
+				}else{
+					window.location.href="CMS/SelTest.htm?id="+id+"&&proid="+projectid;
+					$(btn).removeAttr("disabled");
+				}
+			  },
+			  error: function (xhr, status, text) {
+				  $(btn).removeAttr("disabled");
+		          switch (status) {
+		             case 404:
+		                 console.log("File not found");
+		                 break;
+		             case 500:
+		                 console.log("Server error");
+		                 break;
+		             case 0:
+		                 console.log("Request aborted");
+		                 break;
+		             default:
+		            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+		            	 		+ "readyState: " + xhr.readyState + "\n"
+		            	 		+ "responseText: "+ xhr.responseText + "\n"
+		            	 		+ "status: " + xhr.status + "\n"
+		            	 console.log(msg);
+		            }
+		        }
+			});
+		}
+	}else{
+		//同步
+		$.ajax({
+		  type: 'POST',
+		  url: "CMS/syncTest.htm",
+		  data:{"testName":testName,"projectid":projectid},
+		  dataType: "json",
+		  success: function(data){
+			  if(data.msg=="null"){
+				  alert("此用例还没添加步骤");
+				  $(btn).removeAttr("disabled");
+			  }else{
+				  alert(data.msg);
+				  $(btn).val("查看");
+				  $(btn).unbind("click");
+				  $(btn).click(function(){
+					  window.location.href="CMS/SelTest.htm?id=" + data.testid+"&&proid="+projectid;
+					  $(btn).removeAttr("disabled");
+				  });
+				  $(btn).removeAttr("disabled");
+			  }
+		  },
+		  error: function (xhr, status, text) {
+			  $(btn).removeAttr("disabled");
+	          switch (status) {
+	             case 404:
+	                 console.log("File not found");
+	                 break;
+	             case 500:
+	                 console.log("Server error");
+	                 break;
+	             case 0:
+	                 console.log("Request aborted");
+	                 break;
+	             default:
+	            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+	            	 		+ "readyState: " + xhr.readyState + "\n"
+	            	 		+ "responseText: "+ xhr.responseText + "\n"
+	            	 		+ "status: " + xhr.status + "\n"
+	            	 console.log(msg);
+	            }
+	        }
+		});
+	}
+}
+
+function checkQC(testName){
+	$("input[type='button']").attr("disabled","true");
+	var projectid = $("#projectid").val();
+	$("#testlog").text("请等待...");
+	var sk = new com.czy.websocket("#testlog","#localAddress").init();
+	$.ajax({
+	  type: 'POST',
+	  url: "CMS/checkQC.htm",
+	  data:{"testName":testName,"projectid":projectid},
+	  dataType: "text",
+	  success: function(data){
+		  sk.close();
+		  $("input[type='button']").removeAttr("disabled");
+	  },
+	  error: function (xhr, status, text) {
+		  sk.close();
+		  $("input[type='button']").removeAttr("disabled");
+          switch (status) {
+             case 404:
+                 console.log("File not found");
+                 break;
+             case 500:
+                 console.log("Server error");
+                 break;
+             case 0:
+                 console.log("Request aborted");
+                 break;
+             default:
+            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+            	 		+ "readyState: " + xhr.readyState + "\n"
+            	 		+ "responseText: "+ xhr.responseText + "\n"
+            	 		+ "status: " + xhr.status + "\n"
+            	 console.log(msg);
+            }
+        }
+	});
+}

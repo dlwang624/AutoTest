@@ -1,0 +1,40 @@
+package com.framework;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+
+import org.czy.util.Path;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.phantomjs.PhantomJSDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
+
+public class NewUITestPC {
+
+	public NewAction action;
+
+	public static WebDriver driver;
+
+	public static WebDriver getDriver() {
+		String path = Path.getProjectPath("AutoTestDemo")+"\\selenium\\phantomjs.exe";
+		System.setProperty("phantomjs.binary.path",path);
+		DesiredCapabilities desiredCapabilities = DesiredCapabilities.phantomjs();
+		return driver = new PhantomJSDriver(desiredCapabilities);
+	}
+
+	public WebDriver init(String ip) {
+		// TODO Auto-generated method stub
+		DesiredCapabilities chromeDesiredcap = DesiredCapabilities.chrome();
+		System.setProperty("webdriver.chrome.driver",
+				"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chromedriver.exe");
+		try {
+			driver = new RemoteWebDriver(new URL("http://" + ip + ":4444/wd/hub"), chromeDesiredcap);
+			// driver = WEBDrivers.getInstance().getWebDriver(uid);
+		} catch (MalformedURLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return driver;
+	}
+
+}

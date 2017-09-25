@@ -1,0 +1,225 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>自动化测试平台</title>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta http-equiv="Expires" CONTENT="0"> 
+<meta http-equiv="Cache-Control" CONTENT="no-cache"> 
+<meta http-equiv="Pragma" CONTENT="no-cache"> 
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+<!-- VENDOR CSS -->
+<link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="assets/vendor/font-awesome/css/font-awesome.min.css">
+<link rel="stylesheet" href="assets/vendor/linearicons/style.css">
+<link rel="stylesheet" href="assets/vendor/chartist/css/chartist-custom.css">
+<!-- MAIN CSS -->
+<link rel="stylesheet" href="assets/css/main.css">
+<!-- FOR DEMO PURPOSES ONLY. You should remove this in your project -->
+<link rel="stylesheet" href="assets/css/demo.css">
+</head>
+<body class="${ layoutfull}">
+<div id="divLocker"></div>
+	<!-- WRAPPER -->
+	<div id="wrapper">
+		<!--NAVBAR -->
+		<%@include file="nav/nav.jsp" %>
+		<!-- LEFT SIDEBAR -->
+		<%@include file="nav/sidebar.jsp" %>
+		
+		<!-- MAIN -->
+		<div class="main">
+			<input id="userAddress" type="text" value="${userAddress}" class="none"/>
+			<input id="localAddress" type="text" value="${localAddress}" class="none"/>
+			<input id="testID" type="text" class="none">
+			<input id="testName"  type="text" class="none">
+			<input id="projectid" type="text" value="${projectid}" class="none">
+			<input id="statusflag" type="text" value="${statusflag}" class="none"/>
+			<input id="viewname" type="text" value="${viewname}" class="none"/>
+			<!-- MAIN CONTENT -->
+			<div class="main-content" style="padding:20px 10px 0px 10px;">
+				<div class="container-fluid">
+					<div class="fl"><h3 class="page-title">${ welcomeMSG}</h3></div>
+					<div class="fr"><input type="button" value="返回" class="btn btn-default" id="back"></div>
+					<div class="clearfix"></div>
+					<div class="h30 mb10">
+						<div class="fl 30">
+							<select id="switchAmbient" class="form-control input-sm">
+								<c:if test="${ null == swlist}">
+									<option value="-1">此项目还没有配置环境</option>
+								</c:if>
+								<c:if test="${ null != swlist}">
+									<option value="-1">请选择执行环境</option>
+								</c:if>
+								<c:forEach items="${ swlist}" var="sw">
+									<option value="${sw.id }">${sw.amdesc }</option>
+								</c:forEach>
+							</select>
+						</div>
+						<div class="fr h30">
+							<div class="fl h30 ml100">
+									最终执行状态 : 
+									未知<span class="fa fa-exclamation-circle yellow"></span>
+									失败<span class="fa fa-minus-circle red"></span>
+									成功<span class="fa fa-check-circle-o green"></span>
+							</div>
+							<div class="fl h30">
+								<div class="fl h30 ml20">
+									<label class="fancy-checkbox h30">
+										<input type="checkbox" id="browserflag" checked="checked">
+										<span>是否启用浏览器</span>
+									</label>
+								</div>
+								<div class="fl h30 ml20">
+									<div class="fl">次数:</div>
+									<div class="fl">
+										<input class="form-control" style="width:40px;text-align: center;" type="text" id="execNum" value="1"/>
+									</div>
+								</div>
+								<div class="fl h30 ml20">
+									<div class="fl">数据:</div>
+									<div class="fl">
+										<select name="dataFilename" id="dataFilename" class="form-control input-sm">
+											<option value="null" selected="selected">可选-先选择用例名</option>
+										</select>
+									</div>
+								</div>
+								<div class="fl h30 ml20">
+									<button id="startTest" class="btn btn-default" type="button">执行</button>
+								</div>
+								<div class="fl h30 ml5">
+									<button id="showreport" class="btn btn-default none" type="button">报告</button>
+								</div>
+							</div>
+							<div class="clearfix"></div>
+						</div>
+						<div class="clearfix"></div>
+					</div>
+					<div class="row">
+						<c:if test="${null == list || fn:length(list)==0}">
+							<div style="width:100%; text-align: center;"><h3>此文件夹下没有用例</h3></div>
+						</c:if>
+						<c:if test="${null != list && fn:length(list)!=0}">
+							<div class="col-md-4" style="padding:0px 5px 0px 5px;">
+								<!-- 用例list -->
+								<div class="panel">
+									<div class="panel-heading">
+										<h3 class="panel-title">用例</h3>
+									</div>
+									<div id="test-scroll" class="panel-body">
+										<table class="table">
+											<thead>
+												<tr>
+													<th style="padding:4px;">No</th>
+													<th style="padding:4px;">用例名</th>
+													<th style="padding:4px;">操作</th>
+												</tr>
+											</thead>
+											<tbody>
+												<c:forEach items="${list}" varStatus="status" var="test">
+												<tr> 
+												<td scope="row" style="padding:4px;width:30px;">${status.index + 1}</td>   
+											    <td select="0" style="padding:4px;">
+											    	<div>
+												    	<div class="fl">
+												    		<c:if test="${test.flag == 0}"><span title="${ test.id}" class="fa fa-exclamation-circle yellow"></span></c:if>
+												    		<c:if test="${test.flag == 1}"><span title="${ test.id}" class="fa fa-minus-circle red"></span></c:if>
+												    		<c:if test="${test.flag == 2}"><span title="${ test.id}" class="fa fa-check-circle-o green"></span></c:if>
+												    	</div>
+												    	<div class="fl ellipsis" style="width:250px;text-align:left;cursor: pointer;" title="${test.testname }" onclick="give(this,'${test.testname }',<c:if test="${ test.id == null || test.id == ''}">null</c:if><c:if test="${ test.id != null || test.id != ''}">${test.id }</c:if>,${test.projectid})">
+												    		${test.testname }
+												    	</div>
+												    	<div class="clearfix"></div>
+											    	</div>
+											    </td> 
+											    <td style="padding:4px;">
+											    	<div class="clearfix">
+														<span class="fa fa-pencil-square-o cursor ml2" title="查看" onclick="selTestOrSyncQC(this,'${test.testname}','${test.id}',${test.projectid})"></span>
+											    		<span class="fa fa-expeditedssl cursor ml2" title="解锁" onclick="unlockTest('${test.id}')"></span>
+											    		<span class="fa fa-search cursor ml2" title="格式check" onclick="checkQC('${test.testname}',${test.projectid})"></span>
+											    	</div>
+											    </td> 
+											</tr> 
+											</c:forEach>
+											</tbody>
+										</table>
+									</div>
+								</div>
+								<!-- 用例list -->
+							</div>
+							<div class="col-md-4" style="padding:0px 5px 0px 5px;">
+								<!-- 报告 -->
+								<div class="panel">
+									<div class="panel-heading">
+										<h3 class="panel-title">报告</h3>
+									</div>
+									<div class="panel-body no-padding">
+										<div class="textarea" id="testlog" contenteditable="false"></div>
+									</div>
+								</div>
+								<!-- 报告 -->
+							</div>
+	
+							<div class="col-md-4" style="padding:0px 5px 0px 5px;">
+								<!-- 参数化数据 -->
+								<div class="panel">
+									<div class="panel-heading">
+										<h3 class="panel-title">数据</h3>
+									</div>
+									<div class="panel-body no-padding">
+										<div id="showtestdata" style="padding:0 25px;" align="center"><h3>请选择用例数据文件</h3></div>
+									</div>
+								</div>
+								<!-- 参数化数据  -->
+							</div>
+						</c:if>
+					</div>
+				</div>
+			</div>
+			<!-- END MAIN CONTENT -->
+		</div>
+		<!-- END MAIN -->
+		<div class="clearfix"></div>
+	</div>
+<script id="excelTemplate" type="text/x-jquery-tmpl">
+{{each(i,table) sheet}}
+	<table class="table" id="steptable">
+		<caption>第{{= i+1}}套用例数据</caption> 
+		<thead>
+			<th scope="col">步骤</th> 
+			<th scope="col">描述变量值</th> 
+			<th scope="col">预期描述变量值</th>
+		</thead>
+		<tbody>
+		{{each(j,row) table}}
+			<tr>
+				<td scope="col">{{= row.step}}</td> 
+				<td scope="col">{{= row.desc}}</td> 
+				<td scope="col">{{= row.resultDesc}}</td> 
+			</tr>
+		{{/each}}
+		</tbody>
+	</table>
+{{/each}}
+</script>
+<script src="assets/vendor/jquery/jquery.min.js"></script>
+<script src="assets/vendor/bootstrap/js/bootstrap.min.js"></script>
+<script src="assets/vendor/jquery-slimscroll/jquery.slimscroll.min.js"></script>
+<script src="assets/vendor/jquery.easy-pie-chart/jquery.easypiechart.min.js"></script>
+<script src="assets/vendor/chartist/js/chartist.min.js"></script>
+<script src="assets/scripts/klorofil-common.js"></script>
+<script src="js/layer/layer.js"></script>
+<script type="text/javascript" src="js/nav.js"></script>
+
+<script type="text/javascript" src="js/jquery.tmpl.min.js"></script>
+<script type="text/javascript" src="js/checkQCSocket.js"></script>
+<script type="text/javascript" src="js/usertestlist.js"></script>
+<script type="text/javascript" src="js/socket.js"></script>
+
+</body>
+</html>

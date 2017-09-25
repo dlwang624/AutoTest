@@ -1,0 +1,100 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/common.css"/>
+<title>自动化测试拷贝文件夹</title>
+<style type="text/css">
+input{
+	line-height: 25px;
+	padding:1px 2px;
+	width:150px;
+}
+</style>
+</head>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<body>
+<div class="main5">
+	<div><input type="button" value="返回" class="backBtn" id="back"></div>
+	<div class="clearfix">
+		<div class="fl w100 tr mt5">文件夹编号:</div>
+		<div class="fl"><input name="baseid" type="text"></div>
+	</div>
+	<div class="clearfix">
+		<div class="fl w100 tr mt5">目标文件夹的编号:</div>
+		<div class="fl"><input name="newid" type="text"></div>
+	</div>
+	<div class="clearfix">
+		<div class="fl w100 tr mt5">&nbsp;</div>
+		<div class="fl"><input id="backup" value="Copy" type="button"></div>
+	</div>
+	
+</div>
+<script type="text/javascript">
+$(function(){
+	$("#back").click(function(){
+		window.location.href="project/main.htm";
+	});
+	
+	$("#backup").click(function(){
+		var _this=$(this);
+		$("#back").attr("disabled","true");
+		$(_this).val("请等待...");
+		$(_this).attr("disabled","true");
+		var baseid = $("input[name='baseid']").val();
+		var newid = $("input[name='newid']").val();
+		if(baseid==""&&newid==""){
+			alert("Copy的文件夹编号和Copy至目标文件夹的编号不能为空");
+			return;
+		}
+		if(baseid==""){
+			alert("Copy的文件夹编号不能为空");
+			return;
+		}
+		if(newid==""){
+			alert("Copy至目标文件夹的编号不能为空");
+			return;
+		}
+		$.ajax({
+		 type: 'GET',
+		  url: "project/backupsFolder.htm?baseid="+baseid+"&newid="+newid,
+		  dataType: "json",
+		  success: function(data){
+			alert(data.msg);
+			$("input[name='baseid']").val("");
+			$("input[name='newid']").val("");
+			$(_this).removeAttr("disabled");
+			$(_this).val("Copy");
+			$("#back").removeAttr("disabled");
+		  },
+		  error: function (xhr, status, text) {
+	          switch (status) {
+	             case 404:
+	                 console.log("File not found");
+	                 break;
+	             case 500:
+	                 console.log("Server error");
+	                 break;
+	             case 0:
+	                 console.log("Request aborted");
+	                 break;
+	             default:
+	            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+	            	 		+ "readyState: " + xhr.readyState + "\n"
+	            	 		+ "responseText: "+ xhr.responseText + "\n"
+	            	 		+ "status: " + xhr.status + "\n"
+	            	 console.log(msg);
+	            }
+				$(_this).removeAttr("disabled");
+				$(_this).val("Copy");
+				$("#back").removeAttr("disabled");
+	        }
+		});
+	});
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+package org.czy.util;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.log4j.Logger;
+import org.czy.entity.ReporterParams;
+
+public class TestEditor {
+	
+	private final static Logger LOG = Logger.getLogger(TestEditor.class);
+
+	public static boolean checkHTMLPassed(String path){
+		boolean flag = false;
+        try {
+            String tempStr = "";
+            FileInputStream is = new FileInputStream(path);//读取模块文件
+            BufferedReader br = new BufferedReader(new InputStreamReader(is,"UTF-8"));
+            while ((tempStr = br.readLine()) != null){
+            	flag = matchPassed(tempStr, "span", "class","successIndicator",Final.REPORTPASSTITLE);
+            	if(flag){
+            		break;
+            	}
+            }
+            is.close();
+        } catch (IOException e) {
+            LOG.error(e);
+            return false;
+        }
+		return flag;
+	}
+	
+	public static void outputIndexHTML(ReporterParams param){
+		
+	}
+	
+//	/**
+//	 * 获取指定HTML标签的指定属性的值
+//	 * @param source 要匹配的源文本
+//	 * @param element 标签名称
+//	 * @param attr 标签的属性名称
+//	 * @return 属性值列表
+//	 */
+//	public static List<String> match(String source, String element, String attr,String attrVal) {
+//		List<String> result = new ArrayList<String>();
+//		String reg = "";
+//		if(null!=attrVal&&attrVal!=""){
+//			reg = "<" + element + "[^<>]*?\\s" + attr + "=['\"]?"+attrVal+"['\"]?(\\s.*?)?>";
+//			Matcher m = Pattern.compile(reg).matcher(source);
+//			boolean flag = Pattern.matches(reg, source);
+//			while (m.find()) {
+//				String r = m.group(1);
+//				r = r.split("=")[1].replace("'", "");
+//				result.add(r);
+//			}
+//		}else{
+//			reg = "<" + element + "[^<>]*?\\s" + attr + "=['\"]?(.*?)['\"]?(\\s.*?)?>";
+//			Matcher m = Pattern.compile(reg).matcher(source);
+//			boolean flag = Pattern.matches(reg, source);
+//			while (m.find()) {
+//				String r = m.group(1);
+//				result.add(r);
+//			}
+//		}
+//		return result;
+//	}
+	
+	/**
+	 * 获取指定HTML标签的指定属性的值
+	 * @param source 要匹配的源文本
+	 * @param element 标签名称
+	 * @param attr 标签的属性名称
+	 * @return 属性值列表
+	 */
+	private static boolean matchPassed(String source, String element, String attr,String attrVal,String titleVal) {
+		String reg = "";
+		source = source.trim();
+		reg = "<" + element + "[^<>]*?\\s" + attr + "=['\"]?"+attrVal+"['\"]?(\\s.*?)?>";
+		Matcher m = Pattern.compile(reg).matcher(source);
+		String title = "";
+		while (m.find()) {
+			String r = m.group(1);
+			r = r.split("=")[1];
+			title = r.substring(1,r.length()-1);
+		}
+		return title.equals(titleVal);
+	}
+	
+	
+	 public static boolean outReporters(String fileBasePath,String HtmlBasePath,List<ReporterParams> params) {
+		 //生成suites.html
+         String str = "";
+         try {
+        	 String tempStr = "";
+        	 FileInputStream is = new FileInputStream(fileBasePath+"\\"+Final.SUITES);//读取模块文件
+        	 InputStreamReader isr =  new InputStreamReader(is,"UTF-8");
+             BufferedReader br = new BufferedReader(isr);
+             while ((tempStr = br.readLine()) != null){
+            	 str += tempStr;
+             }
+             is.close();
+         } catch (IOException e) {
+             LOG.error(e);
+             return false;
+         }
+         try {
+        	String trs = "";
+			for (ReporterParams rep : params) {
+				trs += "<tr><td class='test'>";
+				if(rep.getPassed()){
+					trs += "<span class='successIndicator' title='All tests passed.'>&#x2714;</span>";
+				}else{
+					trs += "<span class='failureIndicator' title='Some tests failed.'>&#x2718;</span>";
+				}
+				trs += "<a href='"+rep.getUrl()+"' target='main'>"+rep.getTestname()+"</a>";
+				trs += "</td></tr>";
+			}
+			str = str.replaceAll(Final.REPORTPROJECT,params.get(0).getProjectname());
+			str = str.replaceAll(Final.REPORTTRS,trs);//替换掉模块中相应的地方
+			File f = new File(HtmlBasePath+"\\suites.html");
+			BufferedWriter o = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), "UTF-8"));
+			o.write(str);
+			o.close();
+        } catch (IOException e) {
+             LOG.error(e);
+             return false;
+        }
+         
+         
+       //生成index.htm
+        str = "";
+        try {
+        	 String tempStr = "";
+        	 FileInputStream is = new FileInputStream(fileBasePath+"\\"+Final.INDEX);//读取模块文件
+             BufferedReader br = new BufferedReader(new InputStreamReader(is,"UTF-8"));
+             while ((tempStr = br.readLine()) != null){
+            	 str += tempStr;
+             }
+             is.close();
+         } catch (IOException e) {
+             LOG.error(e);
+             return false;
+         }
+         try {
+			str = str.replaceAll(Final.REPORTTESTID,String.valueOf(params.get(0).getTestid()));
+			File f = new File(HtmlBasePath+"\\index.html");
+			BufferedWriter o = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f),"UTF-8"));
+			o.write(str);
+			o.close();
+        } catch (IOException e) {
+             LOG.error(e);
+             return false;
+        }
+        return true;
+ }
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	public static void main(String[] args) {
+		String source = "<a title=中国体育报 href=''>aaa</a><a title='北京日报' href=''>bbb</a>";
+		source = "<span class='successIndicator' title='用例全部通过.'>&#x2714;</span>";
+//		List<String> list = match(source, "span", "class","successIndicator");
+//		System.out.println(matchPassed(source, "span", "class","successIndicator",Final.REPORTPASSTITLE));
+		System.out.println(checkHTMLPassed("E:\\workspace\\.metadata\\.plugins\\org.eclipse.wst.server.core\\tmp0\\wtpwebapps\\AutoTestDemo\\output\\QCDB3\\batchReport\\20170613\\7\\84\\html\\suites.html"));
+	}
+}

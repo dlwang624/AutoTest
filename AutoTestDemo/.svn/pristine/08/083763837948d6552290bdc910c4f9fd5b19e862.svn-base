@@ -1,0 +1,13 @@
+package org.czy.service;
+
+import java.util.List;
+import java.util.Map;
+
+import org.czy.entity.User;
+
+public interface UserService {
+
+	User userLogin(String name,String password);
+	
+	List<Map<String,String>> LikeMail(String mail);
+}

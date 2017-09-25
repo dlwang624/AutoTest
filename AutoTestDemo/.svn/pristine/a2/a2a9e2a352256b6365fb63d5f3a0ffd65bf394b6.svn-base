@@ -1,0 +1,45 @@
+table.formdata{          
+    border:1px solid #5F6F7E; 
+    border-collapse:collapse; 
+    font-family:Arial; 
+} 
+table.formdata caption{       /*标题*/ 
+    text-align:left; 
+    padding-bottom:5px; 
+    font-size: 15px;
+} 
+table.formdata th{           /*行列标题*/ 
+    border:1px solid #5F6F7E; 
+    background-color:#E2E2E2; 
+    color:#000000; 
+    text-align:center; 
+    font-weight:normal; 
+    padding:2px 8px 2px 6px; 
+    margin:0px; 
+	height:30px;
+} 
+table.formdata td{         /*表格行*/ 
+    margin:0px; 
+    padding:0px 4px; 
+    border:1px solid #ABABAB;   /* 单元格边框 */ 
+	height:25px;
+	font-size: 14px;
+} 
+table.formdata input[type="text"]{          /*可输入区域样式*/ 
+    width:140px;
+    font-size:14px;
+	line-height:25px;
+    margin:0px; 
+    border:none;                /* 输入框不要边框 */ 
+	padding:2px 8px 2px 6px; 
+}
+table.formdata select{          /*可输入区域样式*/ 
+    width:140px;
+    font-size:14px;
+	line-height:25px;
+	padding:5px 0px; 
+}
+table.formdata input[type="text"]:disabled{
+	background-color: transparent;
+	border-color:transparent; 
+}

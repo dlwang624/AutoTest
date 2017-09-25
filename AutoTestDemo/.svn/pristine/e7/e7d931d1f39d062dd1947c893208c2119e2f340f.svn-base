@@ -1,0 +1,336 @@
+package com.utils.tools;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.czy.entity.Qcdb;
+import org.czy.entity.TestSumReport;
+
+import com.utils.db.DB2Factory;
+
+public class TestReportdbTools {
+
+	public TestReportdbTools() {
+		map = new HashMap<Integer, List<List<String>>>();
+		ts = new TestSumReport();
+	}
+
+	private Map<Integer, List<List<String>>> map;
+
+	private TestSumReport ts;
+
+	public Map<Integer, List<List<String>>> getMap() {
+		return map;
+	}
+
+	public void setMap(Map<Integer, List<List<String>>> map) {
+		this.map = map;
+	}
+
+	public TestSumReport getTs() {
+		return ts;
+	}
+
+	public void setTs(TestSumReport ts) {
+		this.ts = ts;
+	}
+
+	public String getTableData(String folderName, Qcdb db) {
+		List<List<String>> rows = new ArrayList<List<String>>();
+		Connection conn;
+		String result = "";
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT e.n4,e.n1,e.n2,f.RN_RUN_NAME FROM (SELECT t.TS_NAME  AS n1,t.TS_STEPS AS n2,c.CYID AS n3,c.CY AS n4,T.TS_TEST_ID AS n5 FROM td.TEST T, td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID =(select a.CF_ITEM_ID from td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID)e,td.RUN f WHERE e.n3=f.RN_CYCLE_ID and e.n5 = f.RN_TEST_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+			while (rs.next()) {
+				List<String> cols = new ArrayList<String>();
+				cols.add(rs.getString("n4"));
+				cols.add(rs.getString("n1"));
+				cols.add(rs.getString("n2"));
+				cols.add(rs.getString("RN_RUN_NAME"));
+				rows.add(cols);
+			}
+			map.put(3, rows);
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+
+	// 遗留缺陷详情
+	public String getPostpondBug(String folderName, Qcdb db) {
+		List<List<String>> rows = new ArrayList<List<String>>();
+		Connection conn;
+		String result = "";
+
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT LN_LINK_ID,BG_SUMMARY,BG_SEVERITY FROM td.LINK L,td.BUG B WHERE L.LN_ENTITY_TYPE = 'STEP' AND L.LN_ENTITY_ID IN (SELECT T.ST_ID FROM td.STEP T WHERE T.ST_RUN_ID IN ( SELECT   f.RN_RUN_ID FROM  (  SELECT       t.TS_NAME    AS n1,  t.TS_STEPS   AS n2,  c.CYID       AS n3,      c.CY         AS n4, T.TS_TEST_ID AS n5    FROM      td.TEST T,      td.TESTCYCL d,(SELECT b.CY_CYCLE_ID AS CYID, b.CY_CYCLE AS CY  FROM 	 td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID in (select a.CF_ITEM_ID from	 td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID )C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID) e, td.RUN f WHERE  e.n3   =f.RN_CYCLE_ID AND e.n5 = f.RN_TEST_ID) AND T.ST_STATUS = 'failed') AND L.LN_BUG_ID=B.BG_BUG_ID AND  B.BG_STATUS='Postpond'";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+			while (rs.next()) {
+				List<String> cols = new ArrayList<String>();
+				cols.add(rs.getString("BG_BUG_ID"));
+				cols.add(rs.getString("BG_SUMMARY"));
+				cols.add(rs.getString("BG_SEVERITY"));
+				rows.add(cols);
+			}
+			map.put(4, rows);
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+			Tool.stringMultiValueMap.clear();
+			Tool.result = null;
+		}
+		return result;
+	}
+
+	// Bug总数
+	public TestSumReport getButCount(String folderName, Qcdb db) {
+		Connection conn;
+		int sum = 0;
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT COUNT(*) FROM td.LINK L,td.BUG B WHERE L.LN_ENTITY_TYPE = 'STEP' AND L.LN_ENTITY_ID IN (SELECT T.ST_ID FROM td.STEP T WHERE T.ST_RUN_ID IN ( SELECT   f.RN_RUN_ID FROM  (    SELECT       t.TS_NAME    AS n1,      t.TS_STEPS   AS n2,      c.CYID       AS n3,      c.CY         AS n4,    T.TS_TEST_ID AS n5    FROM      td.TEST T,      td.TESTCYCL d,(SELECT b.CY_CYCLE_ID AS CYID, b.CY_CYCLE AS CY  FROM  td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID in (select a.CF_ITEM_ID from td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID )C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID) e, td.RUN f WHERE  e.n3   =f.RN_CYCLE_ID AND e.n5 = f.RN_TEST_ID) AND T.ST_STATUS = 'failed') AND L.LN_BUG_ID=B.BG_BUG_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				sum = rs.getInt(1);
+			}
+			ts.setFailCount(sum);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	// 遗留缺陷总数
+	public TestSumReport getPostpondBugCount(String folderName, Qcdb db) {
+		Connection conn;
+		int sum = 0;
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT COUNT(*) FROM td.LINK L,td.BUG B WHERE L.LN_ENTITY_TYPE = 'STEP' AND L.LN_ENTITY_ID IN (SELECT T.ST_ID FROM td.STEP T WHERE T.ST_RUN_ID IN ( SELECT   f.RN_RUN_ID FROM  (  SELECT       t.TS_NAME    AS n1,  t.TS_STEPS   AS n2,  c.CYID       AS n3,      c.CY         AS n4, T.TS_TEST_ID AS n5    FROM      td.TEST T,      td.TESTCYCL d,(SELECT b.CY_CYCLE_ID AS CYID, b.CY_CYCLE AS CY  FROM	 td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID in (select a.CF_ITEM_ID from	 td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID )C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID) e, td.RUN f WHERE  e.n3   =f.RN_CYCLE_ID AND e.n5 = f.RN_TEST_ID) AND T.ST_STATUS = 'failed') AND L.LN_BUG_ID=B.BG_BUG_ID AND  B.BG_STATUS='Postpond'";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				sum = rs.getInt(1);
+			}
+
+			ts.setFailLeaveOut(sum);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	// 缺陷解决率
+
+	public TestSumReport getBugResultRate() {
+		int failcount = ts.getFailCount();
+		int failleave = ts.getFailLeaveOut();
+		float rate = 0;
+		if (failcount != 0) {
+			rate = failleave / failcount;
+		}
+		ts.setFailRate(rate);
+		return ts;
+
+	}
+
+	// 缺陷严重等级占比
+	public TestSumReport getBugSeverity(String folderName, Qcdb db) {
+		Connection conn;
+		int low = 0, medium = 0, high = 0, veryHigh = 0, urgent = 0;
+		List<String> list = new ArrayList<String>();
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT BG_SEVERITY FROM td.LINK L,td.BUG B WHERE L.LN_ENTITY_TYPE = 'STEP' AND L.LN_ENTITY_ID IN (SELECT T.ST_ID FROM td.STEP T WHERE T.ST_RUN_ID IN ( SELECT   f.RN_RUN_ID FROM (  SELECT       t.TS_NAME    AS n1,  t.TS_STEPS   AS n2,  c.CYID       AS n3,      c.CY         AS n4, T.TS_TEST_ID AS n5    FROM     td.TEST T,      td.TESTCYCL d,(SELECT b.CY_CYCLE_ID AS CYID, b.CY_CYCLE AS CY  FROM	 td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID in (select a.CF_ITEM_ID from	 td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID )C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID) e, td.RUN f WHERE  e.n3   =f.RN_CYCLE_ID AND e.n5 = f.RN_TEST_ID) AND T.ST_STATUS = 'failed') AND L.LN_BUG_ID=B.BG_BUG_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+
+				list.add(rs.getString("BG_SEVERITY"));
+			}
+
+			for (int j = 0; j < list.size(); j++) {
+				if ((list.get(j).toString()).contains("1-Low")) {
+					low++;
+				} else if ((list.get(j).toString()).contains("2-Medium")) {
+					medium++;
+				} else if ((list.get(j).toString()).contains("3-High")) {
+					high++;
+				} else if ((list.get(j).toString()).contains("4-Very High")) {
+					veryHigh++;
+				} else {
+					urgent++;
+				}
+
+			}
+			float rate = 0;
+			if (list.size() != 0) {
+				rate = urgent + veryHigh + high /urgent + veryHigh + high+low + medium;
+			}
+			ts.setUrgent(urgent);
+			ts.setVeryHigh(veryHigh);
+			ts.setHigh(high);
+			ts.setMedium(medium);
+			ts.setLow(low);
+			ts.setRate(rate);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	// 测试覆盖
+	public TestSumReport gettouchStepNum(String folderName, Qcdb db) {
+		Connection conn;
+		int sum = 0;
+		List<String> list = new ArrayList<String>();
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT e.n2 FROM (SELECT t.TS_NAME  AS n1,t.TS_STEPS AS n2,c.CYID AS n3,c.CY AS n4,T.TS_TEST_ID AS n5 FROM td.TEST T, td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID =(select a.CF_ITEM_ID from td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID)e,td.RUN f WHERE e.n3=f.RN_CYCLE_ID and e.n5 = f.RN_TEST_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				list.add(rs.getString("n2"));
+			}
+
+			for (String string : list) {
+				sum += Integer.parseInt(string);
+			}
+
+			ts.setTouchStepNum(sum);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	public TestSumReport getexecStepNum(String folderName, Qcdb db) {
+		Connection conn;
+		List<String> list = new ArrayList<String>();
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT f.RN_RUN_NAME FROM (SELECT t.TS_NAME  AS n1,t.TS_STEPS AS n2,c.CYID AS n3,c.CY AS n4,T.TS_TEST_ID AS n5 FROM td.TEST T, td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID =(select a.CF_ITEM_ID from td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID)e,td.RUN f WHERE e.n3=f.RN_CYCLE_ID and e.n5 = f.RN_TEST_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				list.add(rs.getString("RN_RUN_NAME"));
+			}
+
+			ts.setExecStepNum(list.size());
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	public TestSumReport getexecTestCount(String folderName, Qcdb db) {
+		Connection conn;
+		List<String> list = new ArrayList<String>();
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT e.n1 FROM (SELECT t.TS_NAME  AS n1,t.TS_STEPS AS n2,c.CYID AS n3,c.CY AS n4,T.TS_TEST_ID AS n5 FROM td.TEST T, td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID =(select a.CF_ITEM_ID from td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID)e,td.RUN f WHERE e.n3=f.RN_CYCLE_ID and e.n5 = f.RN_TEST_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				list.add(rs.getString("n1"));
+			}
+
+			for (int i = 0; i < list.size() - 1; i++) {
+				for (int j = list.size() - 1; j > i; j--) {
+					if (list.get(j).equals(list.get(i))) {
+						list.remove(j);
+					}
+				}
+			}
+
+			ts.setExecTestCount(list.size());
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+	public TestSumReport getsuccessRate(String folderName, Qcdb db) {
+		Connection conn;
+		int passnum = 0;
+		List<String> list = new ArrayList<String>();
+		try {
+			conn = new DB2Factory(db).getDb();
+			String sql = "SELECT t.TS_NAME,t.TS_CREATION_DATE,T.TS_EXEC_STATUS FROM td.TEST T, td.TESTCYCL d,( SELECT b.CY_CYCLE_ID AS CYID,b.CY_CYCLE AS CY FROM td.CYCL_FOLD a,td.CYCLE b WHERE a.CF_ITEM_ID = (select a.CF_ITEM_ID from td.CYCL_FOLD a where a.CF_ITEM_NAME = '"
+					+ folderName
+					+ "') AND a.CF_ITEM_ID = b.CY_FOLDER_ID) C WHERE d.TC_TEST_ID=t.TS_TEST_ID AND C.CYID = d.TC_CYCLE_ID";
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.executeBatch();
+			ResultSet rs = prep.executeQuery();
+
+			while (rs.next()) {
+				list.add(rs.getString("TS_EXEC_STATUS"));
+			}
+			for (int i = 0; i < list.size(); i++) {
+				String TS_EXEC_STATUS = list.get(i).toString();
+				if (TS_EXEC_STATUS.equals("Passed")) {
+					passnum++;
+
+				}
+			}
+			float rate = 0;
+			int sum = list.size();
+			if (sum != 0) {
+				rate = passnum / sum;
+			}
+			ts.setSuccessRate(rate);
+
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | SQLException e) {
+			e.printStackTrace();
+		}
+		return ts;
+	}
+
+
+}

@@ -1,0 +1,135 @@
+$(function(){
+//	var msg = $("#alertMSG").val();
+//	if(''!=msg&&undefined!=msg&&null!=msg){
+//		layer.alert(msg);
+//	}
+	$("#gtestbynq").click(function(){
+		var testname = $("input[name='likename']").val();
+		if(testname==undefined||testname==""){
+			layer.msg("请输入用例名");
+			return false;
+		}
+		$("#selTestByQAndP").submit();
+	});
+	$("#layerfull").click(function(){
+		var _class = $("body").attr("class");
+		var flag;
+		if(""!=_class&&undefined!=_class&&null!=_class){
+			flag = true;
+		}else{
+			flag = false;
+		}
+		$.ajax({
+			type:"POST",
+			url:"user/layoutfull.htm",
+			data:{"full":flag},
+			success:function(data){
+			},
+			error: function (xhr, status, text) {
+	          switch (status) {
+	             case 404:
+	                 console.log("File not found");
+	                 break;
+	             case 500:
+	                 console.log("Server error");
+	                 break;
+	             case 0:
+	                 console.log("Request aborted");
+	                 break;
+	             default:
+	            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+	            	 		+ "readyState: " + xhr.readyState + "\n"
+	            	 		+ "responseText: "+ xhr.responseText + "\n"
+	            	 		+ "status: " + xhr.status + "\n"
+	            	 console.log(msg);
+	            }
+	        }
+		});
+	});
+});
+function toBrowse(id){
+	var url = "";
+	switch(id){
+		case 1:
+			url = "file/page.htm";
+			break;
+		case 2:
+			url = "project/tobackup.htm";
+			break;
+		case 3:
+			url = "CMS/allTest.htm";
+			break;
+		case 4:
+			url = "Exec/project.htm";
+			break;
+		case 5:
+			url = "Exec/projectlist.htm";
+			break;
+		case 6:
+			url = "project/config.htm";
+			break;
+		case 7:
+			url = "project/configList.htm";
+			break;
+		case 8:
+			url = "count/main.htm";
+			break;
+		case 9:
+			url = "timer/timer.htm";
+			break;
+		case 10://
+			url = "servertools/addtool.htm";
+			break;
+		case 11:
+			url = "servertools/tools.htm?type=0";
+			break;
+		case 12://
+			url = "servertools/tools.htm?type=1";
+			break;
+		case 13://
+			url = "servertools/tools.htm?type=2";
+			break;
+		default:
+			url = "Exec/logout.htm";
+			break;
+	}
+	window.location.href=url;
+}	
+function sidebarRemember(rt,ele){
+	var collapse = false;
+	var flagVal = $(ele).attr("aria-expanded");
+	if(flagVal=="false"){
+		collapse = true;
+	}else{
+		collapse = false;
+	}
+	$.ajax({
+		type:"POST",
+		url:"user/sidebar.htm",
+		data:{"rt":rt,"collapse":collapse},
+		success:function(data){
+		},
+		error: function (xhr, status, text) {
+          switch (status) {
+             case 404:
+                 console.log("File not found");
+                 break;
+             case 500:
+                 console.log("Server error");
+                 break;
+             case 0:
+                 console.log("Request aborted");
+                 break;
+             default:
+            	 var msg = 'Unknown error: ' + status + " " + text + "\n"
+            	 		+ "readyState: " + xhr.readyState + "\n"
+            	 		+ "responseText: "+ xhr.responseText + "\n"
+            	 		+ "status: " + xhr.status + "\n"
+            	 console.log(msg);
+            }
+        }
+	});
+}
+function logout(){
+	window.location.href="Exec/logout.htm";
+}

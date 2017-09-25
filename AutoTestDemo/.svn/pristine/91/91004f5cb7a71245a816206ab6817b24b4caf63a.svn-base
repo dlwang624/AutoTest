@@ -1,0 +1,174 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<base href="${basePath}"> 
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/common.css"/>
+<link href="js/themes/default/easyui.css" rel="stylesheet" />
+<link href="js/themes/icon.css" rel="stylesheet" />
+<link rel="stylesheet" href="css/table.css"/>
+<title>自动化测试定期执行配置</title>
+<style type="text/css">
+input[type="button"]{
+	width: 100px;
+	font-size:14px;
+	line-height:25px;
+    margin:0px; 
+	padding:2px 8px; 
+}
+select{
+    font-size:14px;
+	line-height:25px;
+	padding:5px 0px; 
+}
+#iframeName{
+	width: 300px;
+    font-size: 12px;
+    line-height: 25px;
+    margin: 0px 0px 3px 0px;
+}
+#execNum{
+	width: 30px;
+    font-size: 12px;
+    line-height: 25px;
+    margin: 0px 0px 3px 0px;
+    text-align: center;
+}
+.expectto,.expectcc{
+	display: none;
+	position: absolute;
+}
+.expectto ul, .expectcc ul{
+	list-style: none;
+	width: 300px;
+}
+.expectto ul li , .expectcc ul li{
+	width: 290px;
+	height: 25px;
+	padding:1px 5px;
+	background: #E2E2E2;
+	color: black;
+	font-weight: bold;
+	font-size: 14px;
+	line-height: 25px;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow:hidden;
+	text-overflow: ellipsis;
+	text-align: left;
+}
+.expectto ul li:hover , .expectcc ul li:hover{
+	background: #ABABAB;
+	color: white;
+}
+input[id="to"],input[id="cc"],input[name="tomails"],input[name="ccmails"],input[id="remark"]{
+	width:200px;
+    font-size:14px;
+	line-height:25px;
+    margin:0px; 
+	padding:2px 8px 2px 6px; 
+}
+</style>
+</head>
+<body>
+<div class="main12">
+	<p>客户的ID: ${uid}</p>
+	<p>客户的IP: ${userAddress}</p>
+	<p>服务器IP: ${localAddress}</p>
+	<form id="timer">
+		<input type="text" name="id" value="${timer.id }" class="none">
+		<input type="text" name="qcdbid" value="${timer.qcdbid }" class="none">
+		<input type="text" name="testid" value="${timer.testid }" class="none">
+		<input type="text" name="execdate" value="${timer.execdate }" class="none">
+		<input type="text" name="touserid" value="${timer.touserid }" class="none">
+		<input type="text" name="ccuserid" value="${timer.ccuserid }" class="none">
+		<input type="text" name="newuserid" value="${timer.newuserid }" class="none">
+		<input type="text" name="newdate" value="${timer.newdate }" class="none">
+		<input type="text" name="remark" value="${timer.remark }" class="none">
+	</form>
+	<div class="clearfix">
+		<div class="fr"><input type="button" value="返回" class="backBtn" id="back"></div>
+		<div class="fr"><input type="button" id="upConfig" value="更新"></div>
+	</div>
+	<div class="clearfix">
+		<div class="clearfix">
+			<div class="fl w100 tr mr5 h30">用例表:</div>
+			<div class="fl tl w450">
+				<ul id="testtree"></ul>
+			</div>
+			<div class="fl">
+				<div class="clearfix">
+					<div class="fl w100 tr">所属服务器IP:</div>
+					<div class="fl fontred">${ timer.ip}</div>
+				</div>
+				<div class="clearfix">
+					<div class="fl">
+						<div class="fl w100 tr">备注:</div>
+						<div class="fl"><input type="text" name="remark" id="remark" value="${ timer.remark}"></div>
+					</div>
+					<div class="fl">
+						<div class="fl w100 tr">执行时间:</div>
+						<div class="fl">
+							<select id="week" name="week">
+								<option value="2" <c:if test="${ week == 2 }">selected="selected"</c:if>>周一</option>
+								<option value="3" <c:if test="${ week == 3 }">selected="selected"</c:if>>周二</option>
+								<option value="4" <c:if test="${ week == 4 }">selected="selected"</c:if>>周三</option>
+								<option value="5" <c:if test="${ week == 5 }">selected="selected"</c:if>>周四</option>
+								<option value="6" <c:if test="${ week == 6 }">selected="selected"</c:if>>周五</option>
+								<option value="7" <c:if test="${ week == 7 }">selected="selected"</c:if>>周六</option>
+								<option value="1" <c:if test="${ week == 1 }">selected="selected"</c:if>>周日</option>
+							</select>
+							<select id="time">
+								<option value="null">请选择时间</option>
+								<c:forEach items="${ list}" var="weektime">
+									<option value="${ weektime.time}" <c:if test="${ weektime.time == time}">selected="selected"</c:if> <c:if test="${ weektime.engross}">disabled="disabled"</c:if>>${ weektime.time}</option>
+								</c:forEach>
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="clearfix">
+					<div class="fl">
+						<div class="fl w100 tr">指定收件人:</div>
+						<div class="fl">
+							<input id="to" type="text">
+							<div class="expectto">
+								<ul id="expectto"></ul>
+							</div>
+							<div id="tomails"></div>
+						</div>
+					</div>
+					<div class="fl">
+						<div class="fl w100 tr">指定抄送人:</div>
+						<div class="fl">
+							<input id="cc" type="text">
+							<div class="expectcc">
+								<ul id="expectcc"></ul>
+							</div>
+							<div id="ccmails"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script id="expectTemplate" type="text/x-jquery-tmpl">
+	<li onclick="expectItemClick(this)">{{= mail}}</li>
+</script>
+<script id="weekChangeTemplate" type="text/x-jquery-tmpl">
+{{each(i,weektime) list}}
+	<option value="{{= weektime.time}}" {{if weektime.engross}}disabled="disabled"{{/if}}>{{= weektime.time}}</option>
+{{/each}}
+</script>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script type="text/javascript" src="js/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="js/locale/easyui-lang-zh_CN.js"></script>
+<script type="text/javascript" src="js/jquery.tmpl.min.js"></script>
+<script type="text/javascript" src="js/timerPage.js"></script>
+</body>
+</body>
+</html>
